@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>RFID Form</title>
+  </head>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    // Listen for RFID data from the server
+    socket.on("rfidData", (data) => {
+      console.log("Received RFID data:", data);
+      // Update the input field with the received RFID data
+      document.getElementById("uid").value = data;
+    });
+
+    const clear = () => {
+      document.getElementById("uid").value = "";
+    };
+  </script>
+  <body>
+    <h1>RFID Form</h1>
+    <form id="rfidForm">
+      <label for="uid">UID:</label>
+      <input type="text" id="uid" name="uid" readonly />
+      <button onclick="clear()">clear</button>
+    </form>
+  </body>
+</html>
