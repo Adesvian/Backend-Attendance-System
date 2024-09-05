@@ -31,7 +31,7 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(morgan("dev"));
 
-app.use(MainRouter);
+app.use("/api", MainRouter);
 app.use(express.static("public"));
 app.set("view engine", "ejs");
 app.set("views", "./views");

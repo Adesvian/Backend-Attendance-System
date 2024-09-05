@@ -36,8 +36,8 @@ exports.login = async (req, res) => {
       },
       process.env.JWT_SECRET,
       {
-        // set expiration time 30 seconds
-        expiresIn: "12h",
+        // set expiration time 12 hours
+        expiresIn: "6h",
       }
     );
 
@@ -47,7 +47,7 @@ exports.login = async (req, res) => {
     res.cookie("_USER_AUTH_RAMADHAN", encryptedToken, {
       secure: true,
       httpOnly: true, // Ensure the cookie is only accessible via HTTP(S), not JavaScript
-      maxAge: 24 * 60 * 60 * 1000, // 1 day
+      maxAge: 6 * 60 * 60 * 1000, // Set the cookie to expire in 6 hours
     });
 
     res.status(200).json({
@@ -76,7 +76,6 @@ exports.logout = async (req, res) => {
 exports.verifyToken = (req, res, next) => {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
-  console.log(token);
   if (token == null) return res.sendStatus(401);
   jwt.verify(token, process.env.JWT_SECRET, (err, decode) => {
     if (err) return res.sendStatus(403);

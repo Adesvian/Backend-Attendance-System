@@ -35,7 +35,9 @@ model Teacher {
   id     Int     @id @default(autoincrement())
   nid    String  @unique @db.VarChar(100)
   name   String  @db.VarChar(255)
+  gender String  @db.VarChar(255)
   type   String  @db.VarChar(100)
+  class  String?  @db.VarChar(100)
   classSchedules ClassSchedule[]
 }
 
