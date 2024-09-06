@@ -4,6 +4,7 @@ const UidRouter = require("./uid_router");
 const teacher = require("./teacher_router");
 const user = require("./users_router");
 const classes = require("./class_router");
+const subject = require("./subject_router");
 const attendance = require("./attendance_router");
 const auth = require("./auth_router");
 
@@ -12,6 +13,7 @@ const MainRouter = Router();
 MainRouter.use(auth);
 MainRouter.use(teacher);
 MainRouter.use(classes);
+MainRouter.use(subject);
 MainRouter.use(attendance);
 MainRouter.use(user);
 MainRouter.use(WhatsappRouter);

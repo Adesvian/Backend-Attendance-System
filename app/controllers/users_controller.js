@@ -20,8 +20,10 @@ exports.getStudents = async (req, res, next) => {
     if (nama) {
       whereClause.name = { contains: nama };
     }
+
     if (kelas) {
-      whereClause.class = { contains: kelas };
+      const kelasArray = kelas.split(",").map((k) => k.trim());
+      whereClause.class = { in: kelasArray };
     }
 
     const data = await prisma.student.findMany({

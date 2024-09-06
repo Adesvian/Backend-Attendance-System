@@ -11,7 +11,8 @@ exports.getPermits = async (req, res, next) => {
     }
 
     if (kelas) {
-      whereClause.class = kelas;
+      const kelasArray = kelas.split(",").map((k) => k.trim());
+      whereClause.class = { in: kelasArray };
     }
 
     if (status) {

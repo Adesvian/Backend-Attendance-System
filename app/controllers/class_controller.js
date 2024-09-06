@@ -3,7 +3,21 @@ const prisma = require("../auth/prisma");
 // Function for Classes controller
 exports.getClasses = async (req, res, next) => {
   try {
-    const data = await prisma.class.findMany();
+    const { id, name } = req.query;
+
+    const whereClause = {};
+
+    if (id) {
+      whereClause.id = parseInt(id);
+    }
+
+    if (name) {
+      whereClause.name = name;
+    }
+
+    const data = await prisma.class.findMany({
+      where: whereClause,
+    });
     res.status(200).json(data);
   } catch (error) {
     res.status(500).json({ msg: "Something went wrong" });
@@ -30,7 +44,7 @@ exports.getClassSchedule = async (req, res, next) => {
     }
 
     if (teacherid) {
-      whereClause.teacher_id = parseInt(teacherid);
+      whereClause.teacher_id = teacherid;
     }
 
     if (day) {

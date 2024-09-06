@@ -12,7 +12,8 @@ exports.getAttendances = async (req, res, next) => {
     }
 
     if (kelas) {
-      whereClause.class = kelas;
+      const kelasArray = kelas.split(",").map((k) => k.trim());
+      whereClause.class = { in: kelasArray };
     }
 
     if (method) {
@@ -49,7 +50,8 @@ exports.getAttendancestoday = async (req, res, next) => {
     };
 
     if (kelas) {
-      whereClause.class = kelas;
+      const kelasArray = kelas.split(",").map((k) => k.trim());
+      whereClause.class = { in: kelasArray };
     }
 
     const data = await prisma.attendanceRecord.findMany({
@@ -58,6 +60,36 @@ exports.getAttendancestoday = async (req, res, next) => {
 
     res.status(200).json(data);
   } catch (error) {
+    res.status(500).json({ msg: "Something went wrong" });
+  }
+};
+
+exports.getSubjectAttendances = async (req, res, next) => {
+  try {
+    const { student_name, class: kelas, subject } = req.query;
+
+    const whereClause = {};
+
+    if (student_name) {
+      whereClause.student_name = { contains: student_name };
+    }
+
+    if (kelas) {
+      const kelasArray = kelas.split(",").map((k) => k.trim());
+      whereClause.class = { in: kelasArray };
+    }
+
+    if (subject) {
+      whereClause.subject = subject;
+    }
+
+    const data = await prisma.subjectAttendance.findMany({
+      where: whereClause,
+    });
+
+    res.status(200).json(data);
+  } catch (error) {
+    console.error("Error fetching attendance records:", error);
     res.status(500).json({ msg: "Something went wrong" });
   }
 };
