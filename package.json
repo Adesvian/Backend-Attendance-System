@@ -1,24 +1,26 @@
 {
-  "name": "baileystest",
+  "name": "backend17ramadhan",
   "version": "1.0.0",
-  "description": "backend server to connect whatsapp using Baileys library",
+  "description": "backend server for api ramadhan",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js --ignore ./sessions",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prisma": "prisma",
+    "postinstall": "prisma generate",
+    "seed": "node prisma/seed.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@prisma/client": "^5.18.0",
-    "@whiskeysockets/baileys": "^6.7.5",
+    "@whiskeysockets/baileys": "^6.7.7",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "crypto-js": "^4.2.0",
     "dotenv": "^16.4.5",
-    "ejs": "^3.1.10",
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",

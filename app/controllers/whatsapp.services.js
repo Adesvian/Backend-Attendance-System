@@ -10,6 +10,9 @@ const path = require("path");
 const Error = require("../utils/error");
 const { toJid } = require("../utils/number-to-jid");
 const { zoneTime } = require("../utils/date-format");
+const { countFilesInDirectory } = require("../utils/dir-utils");
+const prisma = require("../auth/prisma");
+const { getIO } = require("../utils/socketIO");
 
 let callback = new Map();
 let connectedSocket;
@@ -21,89 +24,211 @@ const CALLBACK_KEY = {
   ON_QR: "onQR",
 };
 
-const MAX_RECONNECT_ATTEMPTS = 10; // Max number of reconnect attempts
+let updQR = 0;
+const MAX_RECONNECT_ATTEMPTS = 3;
+const sessions = new Map();
 
 exports.connectToWhatsApp = async (sessionName, attempt = 1) => {
-  const logger = pino({
-    level: "silent",
-  });
-  const { state, saveCreds } = await useMultiFileAuthState(
-    path.resolve(process.env.DIR_NAME, sessionName)
-  );
-
-  const socket = makeWASocket({
-    printQRInTerminal: true,
-    auth: state,
-    logger,
-    browser: Browsers.ubuntu("Chrome"),
-  });
-
-  connectedSocket = socket;
+  const logger = pino({ level: "silent" });
 
   try {
-    socket.ev.on("connection.update", (update) => {
+    const { state, saveCreds } = await useMultiFileAuthState(
+      path.resolve(process.env.DIR_NAME, sessionName)
+    );
+
+    const socket = makeWASocket({
+      printQRInTerminal: false,
+      auth: state,
+      logger,
+      browser: Browsers.ubuntu("Chrome"),
+    });
+
+    connectedSocket = socket;
+    sessions.set(sessionName, { ...socket });
+
+    socket.ev.on("connection.update", async (update) => {
       const { connection, lastDisconnect } = update;
 
       if (update.qr) {
+        updQR++;
+        if (updQR > 3) {
+          socket.ws.close();
+          const onDisconnected = callback.get(CALLBACK_KEY.ON_DISCONNECTED);
+          onDisconnected?.(sessionName);
+        }
+        const io = getIO();
+        io.emit("qr-update", update.qr);
         const cb = callback.get(CALLBACK_KEY.ON_QR);
         cb?.({ qr: update.qr });
       }
 
-      if (connection === "close") {
-        const shouldReconnect =
-          lastDisconnect.error?.output?.statusCode !==
-          DisconnectReason.loggedOut;
-
-        if (shouldReconnect && attempt < MAX_RECONNECT_ATTEMPTS) {
-          setTimeout(() => {
-            exports.connectToWhatsApp(sessionName, attempt + 1);
-          }, 2000); // Wait 2 seconds before retrying
-        } else if (attempt >= MAX_RECONNECT_ATTEMPTS) {
-          // Delete session after maximum reconnect attempts
-          try {
-            fs.rmSync(`./sessions/${sessionName}`, {
-              force: true,
-              recursive: true,
-            });
-            const cb = callback.get(CALLBACK_KEY.ON_DISCONNECTED);
-            cb?.(sessionName);
-          } catch (err) {
-            console.error("Failed to delete session:", err);
-          }
-        }
-
-        if (lastDisconnect.error?.output?.statusCode === 401) {
-          try {
-            fs.rmSync(`./sessions/${sessionName}`, {
-              force: true,
-              recursive: true,
-            });
-            const cb = callback.get(CALLBACK_KEY.ON_DISCONNECTED);
-            cb?.(sessionName);
-          } catch (err) {
-            throw err;
-          }
-        }
-      }
-
-      if (connection === "connecting") {
-        const cb = callback.get(CALLBACK_KEY.ON_CONNECTING);
-        cb?.(sessionName);
-      }
-
-      if (connection === "open") {
-        const cb = callback.get(CALLBACK_KEY.ON_CONNECTED);
-        cb?.(sessionName);
+      try {
+        await handleConnectionUpdate(
+          connection,
+          lastDisconnect,
+          sessionName,
+          attempt
+        );
+      } catch (error) {
+        console.error("Error in handleConnectionUpdate:", error);
       }
     });
 
-    socket.ev.on("creds.update", saveCreds);
+    socket.ev.on("creds.update", async () => {
+      try {
+        await saveCreds();
+      } catch (error) {
+        console.error("Error saving credentials:", error);
+      }
+    });
 
     return socket;
-  } catch (e) {
-    return socket;
+  } catch (error) {
+    console.error("Error connecting to WhatsApp:", error);
+    throw error;
   }
 };
+
+async function countFiles() {
+  const targetPath = path.resolve(process.env.DIR_NAME);
+  try {
+    const count = await countFilesInDirectory(targetPath);
+    return count;
+  } catch (err) {
+    return 0;
+  }
+}
+
+async function handleConnectionUpdate(
+  connection,
+  lastDisconnect,
+  sessionName,
+  attempt
+) {
+  const code = lastDisconnect?.error?.output?.statusCode;
+
+  try {
+    if (connection === "close") {
+      console.log("Disconnect Reason:", code);
+      await handleDisconnectReasons(code, sessionName, attempt);
+    } else if (connection === "connecting") {
+      const cb = callback.get(CALLBACK_KEY.ON_CONNECTING);
+      if (cb) {
+        try {
+          await cb(sessionName);
+        } catch (error) {
+          console.error("Error in ON_CONNECTING callback:", error);
+        }
+      }
+    } else if (connection === "open") {
+      const cb = callback.get(CALLBACK_KEY.ON_CONNECTED);
+      if (cb) {
+        try {
+          await cb(connectedSocket.user.id);
+        } catch (error) {
+          console.error("Error in ON_CONNECTED callback:", error);
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error handling connection update:", error);
+  }
+}
+
+async function handleDisconnectReasons(code, sessionName, attempt) {
+  if (
+    code === DisconnectReason.restartRequired ||
+    code === DisconnectReason.timedOut ||
+    (code === DisconnectReason.connectionLost &&
+      attempt < MAX_RECONNECT_ATTEMPTS)
+  ) {
+    setTimeout(async () => {
+      try {
+        await exports.connectToWhatsApp(sessionName, attempt + 1);
+      } catch (error) {
+        console.error("Error reconnecting:", error);
+      }
+    }, 2000);
+  } else if (
+    code === DisconnectReason.connectionClosed ||
+    code === DisconnectReason.badSession
+  ) {
+    try {
+      const count = await countFiles();
+      if (count === 0) {
+        try {
+          fs.rmSync(`./sessions/${sessionName}`, {
+            force: true,
+            recursive: true,
+          });
+          const cb = callback.get(CALLBACK_KEY.ON_DISCONNECTED);
+          cb?.(sessionName);
+          updQR = 0;
+        } catch (err) {
+          console.error("Failed to delete session:", err);
+        }
+      } else {
+        const io = getIO();
+        io.emit("stop-session", sessionName);
+        const cb = callback.get(CALLBACK_KEY.ON_DISCONNECTED);
+        cb?.(connectedSocket.user.id);
+        updQR = 0;
+      }
+    } catch (error) {
+      console.error("Error handling closed or bad session:", error);
+    }
+  } else if (code === DisconnectReason.loggedOut) {
+    try {
+      const io = getIO();
+      fs.rmSync(`./sessions/${sessionName}`, { force: true, recursive: true });
+      const cb = callback.get(CALLBACK_KEY.ON_DISCONNECTED);
+      cb?.(connectedSocket.user.id);
+      const num = connectedSocket.user.id.split(":")[0];
+      const existingSession = await prisma.WaSession.findUnique({
+        where: { number: num },
+      });
+
+      if (existingSession) {
+        await prisma.WaSession.delete({ where: { number: num } });
+      } else {
+        console.warn("No session found for user ID:", num);
+      }
+      io.emit("closed-session", sessionName);
+      updQR = 0;
+    } catch (err) {
+      console.error("Failed to delete session:", err);
+    }
+  }
+}
+
+exports.startSession = exports.connectToWhatsApp;
+
+exports.stopSession = async (sessionName) => {
+  const session = exports.getSession(sessionName);
+  if (!session) {
+    throw new Error(`Session with id ${sessionName} does not exist.`);
+  }
+
+  session.ws.close();
+
+  const onDisconnected = callback.get(CALLBACK_KEY.ON_DISCONNECTED);
+  if (onDisconnected) {
+    onDisconnected(sessionName);
+  }
+
+  sessions.delete(sessionName);
+};
+
+exports.deleteSession = async (sessionName) => {
+  const code = DisconnectReason.loggedOut;
+  try {
+    await handleDisconnectReasons(code, sessionName, 1);
+  } catch (err) {
+    console.error("Failed to delete session:", err);
+  }
+};
+
+exports.getSession = (key) => sessions.get(key);
 
 exports.onDisconnected = (listener) => {
   callback.set(CALLBACK_KEY.ON_DISCONNECTED, listener);
@@ -140,23 +265,37 @@ exports.sendTextMessage = async (req, res) => {
   if (!connectedSocket) {
     throw new Error.WhatsappError("There is no socket found", 424);
   }
-  const receiver = toJid(req.number);
+
+  const receiver = toJid(req.number.toString());
   const isRegistered = await connectedSocket.onWhatsApp(receiver);
   if (!isRegistered[0]) {
-    throw new Error.WhatsappError(
-      `${req.number} is not registered on WhatsApp`,
-      406
-    );
+    return isRegistered[0];
   }
-  const nama = "Aliffedo Desvian"; // get name from database
-  const method = "Check-in"; // get method from database
-  const time = new Date().getTime(); // get time from card detected
-  const timeformat = new Date(time);
-  const zt = zoneTime(timeformat);
 
-  const greetingTemplate = `Selamat pagi bapak/ibu...\nKami menginformasikan terkait kehadiran anak anda yang bernama *${nama}* sedang berada di sekolah.\n\n*Kehadiran*\t: ${method}\n*Pukul*\t\t\t\t: ${zt}\n*Status*\t\t\t: Tepat waktu`;
+  const nama = req.name;
+  const method = req.method;
+  const date = new Date().getTime();
+  const dateformat = new Date(date);
+  const time = zoneTime(dateformat);
+  const status = req.status === 200 ? "Tepat Waktu" : "Terlambat";
+
+  const data = await prisma.WaSession.findMany({
+    select: {
+      greet_template: true,
+    },
+  });
+
+  const greetTemplate = data[0].greet_template;
+
+  let greetingMessage = greetTemplate
+    .replace("{nama}", nama)
+    .replace("{metode}", method)
+    .replace("{waktu}", time)
+    .replace("{status}", status);
+
+  greetingMessage = greetingMessage.replace(/\\n/g, "\n").replace(/\\t/g, "\t");
 
   return await connectedSocket.sendMessage(receiver, {
-    text: greetingTemplate,
+    text: greetingMessage,
   });
 };

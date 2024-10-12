@@ -1,40 +1,61 @@
-// controllers/uid_controller.js
-const { responseSuccessWithData } = require("../utils/response");
 const Error = require("../utils/error");
+const { getIO } = require("../utils/socketIO");
+const { createAttendance } = require("./attendance_controller");
 
-const processUid = (uid, io, listUid) => {
+const processUid = async (rfid, req, res) => {
+  const io = getIO();
   try {
-    uid = uid.toLowerCase();
-
-    if (listUid.includes(uid)) {
-      return { status: true };
+    const result = await prisma.student.findUnique({
+      where: {
+        rfid,
+      },
+    });
+    io.emit("get-uid", rfid);
+    if (!result) {
+      return res
+        .status(404)
+        .json({ status: false, message: "No student found." });
     } else {
-      io.emit("rfidData", uid);
-      return { status: false };
+      const result = await createAttendance(req, res);
+      io.emit("update-records");
+      if (result.status > 200) {
+        return res
+          .status(result.status)
+          .json({ status: result.status, message: result.message });
+      } else {
+        return res.status(200).json({ status: 200, message: "Success" });
+      }
     }
   } catch (error) {
     console.error(error);
-    throw new Error("Error processing UID");
+    throw new Error("Error processing RFID");
   }
+};
+
+exports.authorizeUID = (req, res, next) => {
+  const authHeader = req.headers["authorization"];
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res
+      .status(401)
+      .json({ status: false, message: "Unauthorized: No token provided." });
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  if (token !== process.env.JWT_SECRET) {
+    return res
+      .status(403)
+      .json({ status: false, message: "Forbidden: Invalid token." });
+  }
+
+  next();
 };
 
 exports.getUID = async (req, res, next) => {
-  let listUid = ["a0e39325", "74230804"];
   try {
-    let uid = req.body.uid || req.query.uid;
-    if (!uid) {
-      throw new Error.ValidationError("Bad Request");
-    }
-    const result = processUid(uid, req.io, listUid);
-    return res.json(result);
-  } catch (error) {
-    next(error);
-  }
-};
-
-exports.renderForm = async (req, res, next) => {
-  try {
-    return res.render("form");
+    console.log(req.body.rfid);
+    await processUid(req.body.rfid, req, res);
   } catch (error) {
     next(error);
   }

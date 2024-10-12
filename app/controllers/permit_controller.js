@@ -2,27 +2,39 @@ const prisma = require("../auth/prisma");
 
 exports.getPermits = async (req, res, next) => {
   try {
-    const { name, class: kelas, status } = req.query;
+    const { rfid, name, class: kelas, status, parent } = req.query;
 
     const whereClause = {};
+
+    if (rfid) {
+      whereClause.student_rfid = { contains: rfid };
+    }
+
+    if (parent) {
+      whereClause.student = { parent_nid: parent };
+    }
 
     if (name) {
       whereClause.name = name;
     }
 
     if (kelas) {
-      const kelasArray = kelas.split(",").map((k) => k.trim());
-      whereClause.class = { in: kelasArray };
+      const kelasArray = kelas.split(",").map((k) => parseInt(k.trim()));
+      whereClause.class_id = { in: kelasArray };
     }
 
     if (status) {
-      whereClause.status = status;
+      whereClause.status = parseInt(status);
     }
 
     const data = await prisma.permit.findMany({
       where: whereClause,
+      include: {
+        class: true,
+      },
     });
-    res.status(200).json(data);
+
+    res.status(200).json({ data: data });
   } catch (error) {
     res.status(500).json({ msg: "Something went wrong" });
   }
@@ -45,7 +57,7 @@ exports.getPermitstoday = async (req, res, next) => {
       where: whereClause,
     });
 
-    res.status(200).json(data);
+    res.status(200).json({ data: data });
   } catch (error) {
     res.status(500).json({ msg: "Something went wrong" });
   }
@@ -53,11 +65,11 @@ exports.getPermitstoday = async (req, res, next) => {
 
 exports.addPermit = async (req, res, next) => {
   try {
-    const { name, class: student_class, reason, date, notes } = req.body;
+    const { rfid, class: student_class, reason, date, notes } = req.body;
     const file = req.file; // Mengambil file yang diupload
     const attachment = file.filename;
 
-    if (!name || !student_class || !reason || !req.file) {
+    if (!rfid || !student_class || !reason || !req.file) {
       return res
         .status(400)
         .json({ success: false, msg: "Bad Request: Missing required fields" });
@@ -66,13 +78,13 @@ exports.addPermit = async (req, res, next) => {
 
     const data = await prisma.permit.create({
       data: {
-        name,
-        class: student_class,
+        student_rfid: rfid,
+        class_id: parseInt(student_class),
         reason,
         attachment,
-        date: dateConverted,
+        date: parseInt(dateConverted),
         notes,
-        status: "Pending",
+        status: 300,
       },
     });
 
@@ -93,7 +105,7 @@ exports.updateStatusPermit = async (req, res, next) => {
       },
       data: req.body,
     });
-    res.status(200).json(data);
+    res.status(200).json({ data: data });
   } catch (error) {
     res.status(500).json({ msg: "Something went wrong" });
   }

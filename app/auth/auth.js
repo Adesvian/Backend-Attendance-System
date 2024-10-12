@@ -12,6 +12,14 @@ exports.login = async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: { username },
+      select: {
+        id: true,
+        nid: true,
+        username: true,
+        name: true,
+        password: true,
+        role: true,
+      },
     });
 
     if (!user) {
@@ -30,31 +38,30 @@ exports.login = async (req, res) => {
     const token = jwt.sign(
       {
         id: user.id,
+        nid: user.nid,
         username: user.username,
         name: user.name,
         role: user.role,
       },
       process.env.JWT_SECRET,
       {
-        // set expiration time 12 hours
         expiresIn: "6h",
       }
     );
 
-    // Encrypt the token before setting it in the cookie
     const encryptedToken = encrypt(process.env.JWT_SECRET, token);
 
     res.cookie("_USER_AUTH_RAMADHAN", encryptedToken, {
       secure: true,
-      httpOnly: true, // Ensure the cookie is only accessible via HTTP(S), not JavaScript
-      maxAge: 6 * 60 * 60 * 1000, // Set the cookie to expire in 6 hours
+      httpOnly: false,
+      maxAge: 6 * 60 * 60 * 1000,
     });
+
+    const { id, nid, name, role } = user;
 
     res.status(200).json({
       token,
-      id: user.id,
-      name: user.name,
-      role: user.role,
+      data: { id, nid, name, role },
     });
   } catch (error) {
     console.error(error);

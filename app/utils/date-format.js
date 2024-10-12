@@ -16,3 +16,10 @@ exports.zoneTime = (zoneTime) => {
 
   return zt;
 };
+
+exports.localISO = (unixTimestamp) => {
+  const dateInMilliseconds = unixTimestamp * 1000;
+  const currentTime = new Date(dateInMilliseconds);
+  const timezoneOffset = currentTime.getTimezoneOffset() * 60000;
+  return new Date(currentTime.getTime() - timezoneOffset);
+};

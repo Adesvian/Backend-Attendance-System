@@ -2,76 +2,63 @@ const express = require("express");
 const { config } = require("dotenv");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
-const morgan = require("morgan");
 const http = require("http");
-const { Server } = require("socket.io");
+const { init, getIO } = require("./app/utils/socketIO");
 const MainRouter = require("./app/routers");
 const whatsapp = require("./app/controllers/whatsapp.services");
 const errorHandlerMiddleware = require("./app/middleware/error-middleware");
+const morgan = require("morgan");
 
 config();
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
-
-app.use((req, res, next) => {
-  req.io = io;
-  next();
-});
+init(server);
 
 app.use(
   cors({
-    origin: "http://localhost:8080",
+    origin: process.env.CLIENT_URL,
     credentials: true,
   })
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(morgan("dev"));
+
+if (process.env.NODE_ENV === "development") {
+  app.use(morgan("dev"));
+}
+
+app.use(express.static("public"));
 
 app.use("/api", MainRouter);
-app.use(express.static("public"));
-app.set("view engine", "ejs");
-app.set("views", "./views");
 
 app.use(errorHandlerMiddleware);
 
-io.on("connection", (socket) => {
-  console.log("A user connected");
-
-  socket.on("rfidData", (data) => {
-    console.log("Received RFID data:", data);
-    io.emit("rfidData", data);
-  });
-
-  socket.on("disconnect", () => {
-    console.log("User disconnected");
-  });
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Listening on port http://localhost:${PORT}`);
 });
 
 // WhatsApp event listeners
+whatsapp.onQRUpdated((data) => {
+  console.log("QR Code received:", data);
+});
+
 whatsapp.onConnecting((listener) => {
   console.log(`Connecting to WhatsApp ${listener} ...`);
 });
 
 whatsapp.onConnected((listener) => {
-  console.log(`WhatsApp ${listener} Connected`);
+  const number = listener.split(":")[0];
+  const io = getIO();
+  io.emit("connected-creds", number);
+  console.log(`WhatsApp ${number} Connected`);
 });
 
 whatsapp.onDisconnected((listener) => {
   console.log(`WhatsApp ${listener} Disconnected`);
 });
 
-whatsapp.onQRUpdated(async (data) => {
-  console.log(data);
-});
-
 // Load WhatsApp session
 whatsapp.loadSession();
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Listening on port http://localhost:${PORT}`);
-});

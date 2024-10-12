@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native"]
 }
 
 datasource db {
@@ -8,114 +9,164 @@ datasource db {
 }
 
 model User {
-  id       Int      @id @default(autoincrement())
-  name     String   @db.VarChar(255)
-  username String   @unique @db.VarChar(255)
-  password String   @db.VarChar(255)
-  role     String   @db.VarChar(100)
+  id       Int     @id @default(autoincrement())
+  nid      String? @unique @db.VarChar(100)
+  name     String  @db.VarChar(255)
+  username String  @unique @db.VarChar(255)
+  password String  @db.VarChar(255)
+  role     String  @db.VarChar(100)
 }
 
 model Student {
-  rfid       String   @id @db.VarChar(100)
-  name       String   @db.VarChar(255)
-  class      String   @db.VarChar(100)
-  gender     String   @db.VarChar(100)
-  parent_nid String   @db.VarChar(100)
-  parent     Parent   @relation(fields: [parent_nid], references: [nid])
+  rfid           String    @id @db.VarChar(100)
+  name           String    @db.VarChar(255)
+  class_id       Int
+  gender         String    @db.VarChar(100)
+  birth_of_place String?   @db.VarChar(100)
+  birth_of_date  DateTime?
+  parent_nid     String    @db.VarChar(100)
+
+  parent      Parent              @relation(fields: [parent_nid], references: [nid])
+  class       Class               @relation(fields: [class_id], references: [id])
+  permit      Permit[]
+  attendanceR AttendanceRecord[]
+  attendanceS SubjectAttendance[]
 }
 
 model Parent {
-  nid        String    @id @db.VarChar(100)
-  name       String    @db.VarChar(255)
-  phone_num  String    @db.VarChar(100)
-  students   Student[]
+  nid            String    @id @db.VarChar(100)
+  name           String    @db.VarChar(255)
+  gender         String    @db.VarChar(100)
+  birth_of_place String?   @db.VarChar(100)
+  birth_of_date  DateTime?
+  phone_num      String?   @db.VarChar(100)
+  address        String?   @db.VarChar(255)
+
+  students Student[]
 }
 
 model Teacher {
-  nid    String  @id @db.VarChar(100)
-  name   String  @db.VarChar(255)
-  gender String  @db.VarChar(255)
-  type   String  @db.VarChar(100)
-  class  String? @db.VarChar(100)
+  nid            String    @id @db.VarChar(100)
+  name           String    @db.VarChar(255)
+  gender         String    @db.VarChar(100)
+  birth_of_place String?   @db.VarChar(100)
+  birth_of_date  DateTime?
+  type           String    @db.VarChar(100)
+  class_id       Int?      @unique
+  address        String?   @db.VarChar(255)
+
   classSchedules ClassSchedule[]
+  class          Class?          @relation(fields: [class_id], references: [id])
+}
+
+model Category {
+  id   Int    @id @default(autoincrement())
+  name String @db.VarChar(255)
+
+  Subject Subject[]
 }
 
 model Subject {
-  id       Int     @id @default(autoincrement())
-  name     String  @unique @db.VarChar(100)
-  category String  @db.VarChar(100)
+  id          Int    @id @default(autoincrement())
+  name        String @unique @db.VarChar(100)
+  category_id Int
+
+  category       Category            @relation(fields: [category_id], references: [id])
   classSchedules ClassSchedule[]
+  attendanceS    SubjectAttendance[]
 }
 
 model Class {
-  id    Int     @id @default(autoincrement())
-  name  String  @unique @db.VarChar(100)
+  id   Int    @id @default(autoincrement())
+  name String @unique @db.VarChar(100)
+
+  teacher        Teacher[]
   classSchedules ClassSchedule[]
+  permit         Permit[]
+  attendanceR    AttendanceRecord[]
+  attendanceS    SubjectAttendance[]
+  time           TimeThreshold[]
+  Student        Student[]
 }
 
 model ClassSchedule {
-  id         Int       @id @default(autoincrement())
-  class_id   Int
-  subject_id Int
-  teacher_id String
-  day        String    @db.VarChar(100)
-  start_time DateTime  @db.Time
-  end_time   DateTime  @db.Time
+  id          Int      @id @default(autoincrement())
+  class_id    Int
+  subject_id  Int
+  teacher_nid String
+  day         String   @db.VarChar(100)
+  start_time  DateTime @db.Time
+  end_time    DateTime @db.Time
 
-  class      Class     @relation(fields: [class_id], references: [id])
-  subject    Subject   @relation(fields: [subject_id], references: [id])
-  teacher    Teacher   @relation(fields: [teacher_id], references: [nid])
+  class   Class   @relation(fields: [class_id], references: [id])
+  subject Subject @relation(fields: [subject_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  teacher Teacher @relation(fields: [teacher_nid], references: [nid], onDelete: Cascade, onUpdate: Cascade)
 
-  // Aturan: Kombinasi unik untuk mencegah duplikasi jadwal yang sama persis
-  @@unique([class_id, subject_id, teacher_id, day, start_time, end_time])
-
-  // Aturan: Satu guru hanya bisa mengajar di satu kelas pada satu waktu
-  @@unique([teacher_id, day, start_time, end_time])
-
-  // Aturan: Satu kelas hanya bisa berisi satu subject pada satu waktu
+  // Aturan untuk mencegah duplikasi jadwal yang sama persis
+  @@unique([class_id, subject_id, teacher_nid, day, start_time, end_time])
+  // Aturan untuk memastikan satu guru hanya bisa mengajar satu kelas pada waktu yang sama
+  @@unique([teacher_nid, day, start_time, end_time])
+  // Aturan untuk memastikan satu kelas hanya bisa memiliki satu mata pelajaran pada waktu yang sama
   @@unique([class_id, day, start_time, end_time])
 }
 
-model WaSession {
-  session_name String   @id @db.VarChar(100)
-  status       String   @db.VarChar(100)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-}
-
 model Permit {
-  id         Int     @id @default(autoincrement())
-  name       String  @db.VarChar(100)
-  class      String  @db.VarChar(100)
-  reason     String  @db.VarChar(100)
-  attachment String  @db.VarChar(100)
-  date       Int
-  notes      String  @db.LongText
-  status     String  @db.VarChar(100)
+  id           Int     @id @default(autoincrement())
+  student_rfid String  @db.VarChar(100)
+  class_id     Int
+  reason       String  @db.VarChar(100)
+  attachment   String? @db.VarChar(100)
+  date         Int
+  notes        String? @db.LongText
+  status       Int
+
+  student Student @relation(fields: [student_rfid], references: [rfid], onDelete: Cascade, onUpdate: Cascade)
+  class   Class   @relation(fields: [class_id], references: [id])
 }
 
 model AttendanceRecord {
-  id           Int     @id @default(autoincrement())
-  student_rfid String  @db.VarChar(100)
-  student_name String  @db.VarChar(100)
-  class        String  @db.VarChar(100)
+  id           Int    @id @default(autoincrement())
+  student_rfid String @db.VarChar(100)
+  class_id     Int
   date         Int
   method       Int
   status       Int
+
+  student Student @relation(fields: [student_rfid], references: [rfid], onDelete: Cascade, onUpdate: Cascade)
+  class   Class   @relation(fields: [class_id], references: [id])
 }
 
 model SubjectAttendance {
-  id           Int     @id @default(autoincrement())
-  student_rfid String  @db.VarChar(100)
-  student_name String  @db.VarChar(100)
-  class        String  @db.VarChar(100)
+  id           Int    @id @default(autoincrement())
+  student_rfid String @db.VarChar(100)
+  class_id     Int
   date         Int
-  subject      String  @db.VarChar(100)
+  subject_id   Int
+
+  student Student @relation(fields: [student_rfid], references: [rfid], onDelete: Cascade, onUpdate: Cascade)
+  class   Class   @relation(fields: [class_id], references: [id])
+  subject Subject @relation(fields: [subject_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
 }
 
 model TimeThreshold {
-  id     Int     @id @default(autoincrement())
-  class  String  @db.VarChar(100)
-  method Int
-  time   DateTime @db.Time
+  id          Int      @id @default(autoincrement())
+  class_id    Int
+  method      Int
+  time        DateTime @db.Time
+  custom_time String?  @db.VarChar(100)
+
+  class Class @relation(fields: [class_id], references: [id])
+}
+
+model WaSession {
+  number         String @id
+  name           String @db.VarChar(100)
+  status         String @db.VarChar(100)
+  greet_template String @db.LongText
+}
+
+model Holidays {
+  id   Int      @id @default(autoincrement())
+  name String   @db.VarChar(100)
+  date DateTime
 }

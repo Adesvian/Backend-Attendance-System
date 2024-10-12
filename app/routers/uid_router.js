@@ -1,9 +1,8 @@
 const { Router } = require("express");
-const { renderForm, getUID } = require("../controllers/uid_controller");
+const { getUID, authorizeUID } = require("../controllers/uid_controller");
 
 const UidRouter = Router();
 
-UidRouter.all("/get-uid", getUID);
-UidRouter.all("/form", renderForm);
+UidRouter.post("/scan-RFID", authorizeUID, getUID);
 
 module.exports = UidRouter;

@@ -4,7 +4,7 @@ const path = require("path");
 // Konfigurasi multer untuk menyimpan file
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, path.join(__dirname, "../../public/permits")); // folder tujuan penyimpanan file
+    cb(null, path.join(__dirname, "../../public/api/permits")); // folder tujuan penyimpanan file
   },
   filename: function (req, file, cb) {
     cb(null, Date.now() + "-" + file.originalname); // menambahkan timestamp untuk menghindari nama file yang sama
