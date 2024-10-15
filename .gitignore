@@ -1,5 +1,5 @@
 node_modules
 .env
 sessions
-prisma/seed.js
+prisma/seed.js/
 public/api/permits/

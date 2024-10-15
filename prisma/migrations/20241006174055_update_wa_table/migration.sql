@@ -8,10 +8,10 @@
 
 */
 -- AlterTable
-ALTER TABLE `timethreshold` ADD COLUMN `custom_time` VARCHAR(100) NULL;
+ALTER TABLE `TimeThreshold` ADD COLUMN `custom_time` VARCHAR(100) NULL;
 
 -- AlterTable
-ALTER TABLE `wasession` DROP PRIMARY KEY,
+ALTER TABLE `WaSession` DROP PRIMARY KEY,
     DROP COLUMN `id`,
     ADD COLUMN `greet_template` LONGTEXT NOT NULL,
     ADD COLUMN `number` VARCHAR(191) NOT NULL,

@@ -1,3 +1,4 @@
+const prisma = require("../auth/prisma");
 const Error = require("../utils/error");
 const { getIO } = require("../utils/socketIO");
 const { createAttendance } = require("./attendance_controller");
