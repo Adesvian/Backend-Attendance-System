@@ -513,3 +513,82 @@ exports.deleteTeacher = async (req, res, next) => {
     res.status(500).json({ msg: "Something went wrong" });
   }
 };
+
+exports.verify_reset = async (req, res, next) => {
+  try {
+    const { username, nid } = req.query;
+
+    if (!username || !nid) {
+      return res.status(404).json({ data: false });
+    }
+
+    const lastThreeDigits = nid.slice(-3);
+
+    const whereClause = {
+      username: username,
+      nid: {
+        endsWith: lastThreeDigits,
+      },
+    };
+
+    const data = await prisma.user.findMany({
+      where: whereClause,
+    });
+
+    if (data.length === 0) {
+      return res.status(404).json({ data: false });
+    }
+
+    res.status(200).json({ data: true });
+  } catch (error) {
+    console.error(error); // Tambahkan log untuk debugging
+    res.status(500).json({ msg: "Something went wrong" });
+  }
+};
+
+exports.reset_password = async (req, res, next) => {
+  try {
+    const { username, nid, password } = req.body;
+
+    if (!username || !nid || !password) {
+      return res
+        .status(400)
+        .json({ data: false, msg: "Semua field harus diisi." });
+    }
+
+    if (password.length < 6) {
+      return res
+        .status(400)
+        .json({ data: false, msg: "Password harus minimal 6 karakter." });
+    }
+
+    const lastThreeDigits = nid.slice(-3);
+
+    const whereClause = {
+      username: username,
+      nid: {
+        endsWith: lastThreeDigits,
+      },
+    };
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const data = await prisma.user.updateMany({
+      where: whereClause,
+      data: {
+        password: hashedPassword,
+      },
+    });
+
+    if (data.count === 0) {
+      return res
+        .status(404)
+        .json({ data: false, msg: "Username atau NIK tidak ditemukan." });
+    }
+
+    res.status(200).json({ data: true, msg: "Password berhasil diubah." });
+  } catch (error) {
+    console.error(error); // Log error untuk debugging
+    res.status(500).json({ msg: "Terjadi kesalahan pada server." });
+  }
+};

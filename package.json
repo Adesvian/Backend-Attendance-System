@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "backend server for api ramadhan",
   "main": "index.js",
+  "type": "commonjs",
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js --ignore ./sessions",
@@ -11,8 +12,19 @@
     "postinstall": "prisma generate",
     "seed": "node prisma/seed.js"
   },
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "sistem-absensi",
+    "absensi-realtime",
+    "restful-api",
+    "automation-attendance-system",
+    "automation-notification",
+    "whatsapp-baileys",
+    "whatsapp-multi-device",
+    "internet-of-things"
+  ],
+  "base": "https://server-backend.17ramadhan.my.id",
+  "author": "LuciferMorningstar",
+  "license": "MIT",
   "dependencies": {
     "@prisma/client": "^5.18.0",
     "@whiskeysockets/baileys": "^6.7.7",
