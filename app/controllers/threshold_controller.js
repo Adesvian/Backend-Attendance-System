@@ -60,7 +60,7 @@ exports.setCheckOutTime = (req, res, next) => {
 exports.setCheckOutTimeByClass = async (req, res, next) => {
   try {
     const classId = req.params.class;
-    const { time } = req.body;
+    const { time, defaultTime } = req.body;
 
     if (!time) {
       return res.status(400).json({ msg: "Time is required." });
@@ -69,13 +69,34 @@ exports.setCheckOutTimeByClass = async (req, res, next) => {
     const [hours, minutes] = time.split(":");
     const timeDate = new Date(Date.UTC(1970, 0, 1, hours, minutes, 0));
 
-    const customTimeCondition =
-      timeDate > new Date(Date.UTC(1970, 0, 1, 13, 0, 0)) ? "iscustom" : null;
+    const existingRecords = await prisma.timeThreshold.findMany({
+      where: {
+        class_id: parseInt(classId, 10),
+        method: 1002,
+        NOT: {
+          custom_time: "isFriday",
+        },
+      },
+      select: {
+        custom_time: true,
+      },
+    });
+
+    const hasCustomTime = existingRecords.some(
+      (record) => record.custom_time === "iscustom"
+    );
+
+    const customTimeCondition = defaultTime
+      ? null
+      : hasCustomTime
+      ? "iscustom"
+      : "iscustom";
 
     const data = await prisma.timeThreshold.updateMany({
       where: {
         class_id: parseInt(classId, 10),
         method: 1002,
+        custom_time: defaultTime ? "iscustom" : null,
       },
       data: {
         time: timeDate,
