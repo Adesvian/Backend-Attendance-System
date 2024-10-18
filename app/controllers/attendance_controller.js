@@ -456,7 +456,15 @@ const getCheckOutStatus = async (timeCapt, student_class) => {
 
     let data;
     if (dayOfWeek === 5) {
-      data = { time: new Date("1970-01-01T11:15:00.000Z") };
+      console.log("Friday");
+      data = await prisma.timeThreshold.findFirst({
+        where: {
+          class_id: student_class.id,
+          method: 1002,
+          custom_time: "isFriday",
+        },
+        select: { time: true },
+      });
     } else {
       data = await prisma.timeThreshold.findFirst({
         where: { class_id: student_class.id, method: 1002 },

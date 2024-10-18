@@ -55,7 +55,6 @@ exports.authorizeUID = (req, res, next) => {
 
 exports.getUID = async (req, res, next) => {
   try {
-    console.log(req.body.rfid);
     await processUid(req.body.rfid, req, res);
   } catch (error) {
     next(error);
