@@ -90,9 +90,7 @@ CREATE TABLE `ClassSchedule` (
     `start_time` TIME NOT NULL,
     `end_time` TIME NOT NULL,
 
-    UNIQUE INDEX `ClassSchedule_class_id_subject_id_teacher_nid_day_start_time_key`(`class_id`, `subject_id`, `teacher_nid`, `day`, `start_time`, `end_time`),
-    UNIQUE INDEX `ClassSchedule_teacher_nid_day_start_time_end_time_key`(`teacher_nid`, `day`, `start_time`, `end_time`),
-    UNIQUE INDEX `ClassSchedule_class_id_day_start_time_end_time_key`(`class_id`, `day`, `start_time`, `end_time`),
+    
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
