@@ -5,3 +5,4 @@ prisma/seed.js
 public/attendance_logs.txt
 public/subject_attendance_logs.txt
 public/api/permits/
+*.zip

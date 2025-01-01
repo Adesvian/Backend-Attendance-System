@@ -65,12 +65,7 @@ exports.getClassSchedule = async (req, res, next) => {
       where: whereClause,
       include: {
         class: { select: { name: true } },
-        subject: {
-          select: {
-            name: true,
-            category: { select: { name: true } },
-          },
-        },
+        subject: true,
         teacher: { select: { name: true } },
       },
     });

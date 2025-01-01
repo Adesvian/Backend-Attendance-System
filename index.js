@@ -41,9 +41,7 @@ server.listen(PORT, () => {
 });
 
 // WhatsApp event listeners
-whatsapp.onQRUpdated((data) => {
-  console.log("QR Code received:", data);
-});
+whatsapp.onQRUpdated((data) => {});
 
 whatsapp.onConnecting((listener) => {
   console.log(`Connecting to WhatsApp ${listener} ...`);

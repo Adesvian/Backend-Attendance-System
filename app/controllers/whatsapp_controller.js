@@ -96,14 +96,18 @@ exports.sendMessage = async (req, res, next) => {
       throw new Error.WhatsappError("Bad Request", 400);
     }
 
-    const connectedSocket = await whatsapp.sendTextMessage({
+    const result = await whatsapp.sendTextMessage({
       number: phone,
       name: name,
       method: method,
       status: status,
     });
 
-    return connectedSocket;
+    if (result === true) {
+      return res.status(200).json({ message: "Message sent successfully" });
+    } else if (result === false) {
+      return res.status(404).json({ message: "User is not registered" });
+    }
   } catch (error) {
     next(error);
   }
@@ -157,7 +161,7 @@ exports.updateWhatsappCreds = async (req, res, next) => {
 exports.deleteWhatsappCreds = async (req, res, next) => {
   const io = getIO();
   try {
-    const data = await prisma.WaSession.delete({
+    const data = await prisma.WaSession.findUnique({
       where: {
         number: req.params.num,
       },
@@ -165,6 +169,13 @@ exports.deleteWhatsappCreds = async (req, res, next) => {
 
     if (data.status !== "pending") {
       await whatsapp.deleteSession(data?.name);
+    } else {
+      console.log("kesini");
+      const data = await prisma.WaSession.delete({
+        where: {
+          number: req.params.num,
+        },
+      });
     }
 
     io.emit("closed-session", data);

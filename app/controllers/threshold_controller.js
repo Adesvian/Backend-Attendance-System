@@ -19,34 +19,49 @@ exports.setTimeThreshold = async (req, res, next, method) => {
       req.body.time = timeDate;
 
       if (method === 1001) {
-        req.body.custom_time =
-          timeDate > new Date(Date.UTC(1970, 0, 1, 7, 30, 0))
-            ? "iscustom"
-            : null;
+        // Check-in time logic
+        if (timeDate > new Date(Date.UTC(1970, 0, 1, 7, 30, 0))) {
+          req.body.custom_time = "iscustom";
+        } else {
+          req.body.custom_time = null;
+        }
       } else if (method === 1002) {
-        req.body.custom_time =
-          timeDate > new Date(Date.UTC(1970, 0, 1, 13, 0, 0))
-            ? "iscustom"
-            : null;
+        if (timeDate > new Date(Date.UTC(1970, 0, 1, 13, 0, 0))) {
+          req.body.custom_time = "iscustom";
+        }
       }
     }
 
-    const data = await prisma.timeThreshold.updateMany({
-      where: {
-        class_id: { in: classIds },
-        method: method,
-        custom_time: null,
-      },
-      data: req.body,
-    });
+    if (method === 1001) {
+      const data = await prisma.timeThreshold.updateMany({
+        where: {
+          class_id: { in: classIds },
+          method: method,
+        },
+        data: req.body,
+      });
 
-    res.status(200).json({ data });
+      res.status(200).json({ data });
+    } else if (method === 1002) {
+      const data = await prisma.timeThreshold.updateMany({
+        where: {
+          class_id: { in: classIds },
+          method: method,
+          custom_time: null,
+        },
+        data: req.body,
+      });
+
+      res.status(200).json({ data });
+    } else {
+      // If method is neither 1001 nor 1002, return an error
+      res.status(400).json({ msg: "Invalid method for this action" });
+    }
   } catch (error) {
     console.error(error);
     res.status(500).json({ msg: "Something went wrong" });
   }
 };
-
 // Wrapper for check-in
 exports.setCheckInTime = (req, res, next) => {
   return exports.setTimeThreshold(req, res, next, 1001);

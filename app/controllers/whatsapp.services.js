@@ -40,7 +40,7 @@ exports.connectToWhatsApp = async (sessionName, attempt = 1) => {
       printQRInTerminal: false,
       auth: state,
       logger,
-      browser: Browsers.ubuntu("Chrome"),
+      browser: Browsers.appropriate("Chrome"),
     });
 
     connectedSocket = socket;
@@ -180,9 +180,16 @@ async function handleDisconnectReasons(code, sessionName, attempt) {
   } else if (code === DisconnectReason.loggedOut) {
     try {
       const io = getIO();
-      fs.rmSync(`./sessions/${sessionName}`, { force: true, recursive: true });
+
+      const safeSessionName = sessionName.replace(/[^a-zA-Z0-9_-]/g, "");
+      fs.rmSync(`./sessions/${safeSessionName}`, {
+        force: true,
+        recursive: true,
+      });
+
       const cb = callback.get(CALLBACK_KEY.ON_DISCONNECTED);
       cb?.(connectedSocket.user.id);
+
       const num = connectedSocket.user.id.split(":")[0];
       const existingSession = await prisma.WaSession.findUnique({
         where: { number: num },
@@ -193,7 +200,9 @@ async function handleDisconnectReasons(code, sessionName, attempt) {
       } else {
         console.warn("No session found for user ID:", num);
       }
+
       io.emit("closed-session", sessionName);
+
       updQR = 0;
     } catch (err) {
       console.error("Failed to delete session:", err);
@@ -220,10 +229,12 @@ exports.stopSession = async (sessionName) => {
 };
 
 exports.deleteSession = async (sessionName) => {
-  const code = DisconnectReason.loggedOut;
   try {
-    await handleDisconnectReasons(code, sessionName, 1);
-  } catch (err) {
+    try {
+      await connectedSocket.logout();
+    } catch (err) {}
+    connectedSocket.end(undefined);
+  } catch (error) {
     console.error("Failed to delete session:", err);
   }
 };
@@ -255,7 +266,11 @@ exports.loadSession = () => {
       throw err;
     }
     for (const dir of dirs) {
-      if (!dir) continue;
+      if (!dir) {
+        console.log("kosong nih", dir);
+      } else {
+        console.log("ada cuys", dir);
+      }
       exports.connectToWhatsApp(dir);
     }
   });
@@ -269,7 +284,7 @@ exports.sendTextMessage = async (req, res) => {
   const receiver = toJid(req.number.toString());
   const isRegistered = await connectedSocket.onWhatsApp(receiver);
   if (!isRegistered[0]) {
-    return isRegistered[0];
+    return false;
   }
 
   const nama = req.name;
@@ -295,7 +310,9 @@ exports.sendTextMessage = async (req, res) => {
 
   greetingMessage = greetingMessage.replace(/\\n/g, "\n").replace(/\\t/g, "\t");
 
-  return await connectedSocket.sendMessage(receiver, {
+  await connectedSocket.sendMessage(receiver, {
     text: greetingMessage,
   });
+
+  return true;
 };
