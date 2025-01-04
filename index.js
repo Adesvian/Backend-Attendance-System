@@ -48,10 +48,10 @@ whatsapp.onConnecting((listener) => {
 });
 
 whatsapp.onConnected((listener) => {
-  const number = listener.split(":")[0];
+  console.log(`WhatsApp ${listener} Connected`);
   const io = getIO();
-  io.emit("connected-creds", number);
-  console.log(`WhatsApp ${number} Connected`);
+  io.emit("connected-creds", listener);
+  console.log(`WhatsApp ${listener} Connected`);
 });
 
 whatsapp.onDisconnected((listener) => {

@@ -13,11 +13,7 @@ function init(server) {
   });
 
   io.on("connection", (socket) => {
-    console.log("IO socket is opened");
-
-    socket.on("disconnect", () => {
-      console.log("IO socket is closed");
-    });
+    socket.on("disconnect", () => {});
   });
 }
 

@@ -36,7 +36,7 @@ exports.stopSession = async (req, res, next) => {
   try {
     const data = await prisma.WaSession.findUnique({
       where: {
-        number: req.body.number,
+        name: req.body.name,
       },
     });
     const sessionName = data?.name;
@@ -47,7 +47,7 @@ exports.stopSession = async (req, res, next) => {
 
     await prisma.WaSession.update({
       where: {
-        number: req.body.number,
+        name: req.body.name,
       },
       data: {
         status: "inactive",
@@ -67,7 +67,7 @@ exports.startSession = async (req, res, next) => {
   try {
     const data = await prisma.WaSession.findUnique({
       where: {
-        number: req.body.number,
+        name: req.body.name,
       },
     });
     const sessionName = data?.name;
@@ -145,7 +145,7 @@ exports.updateWhatsappCreds = async (req, res, next) => {
   try {
     const data = await prisma.WaSession.update({
       where: {
-        number: req.params.num,
+        name: req.params.name,
       },
       data: req.body,
     });
@@ -163,23 +163,41 @@ exports.deleteWhatsappCreds = async (req, res, next) => {
   try {
     const data = await prisma.WaSession.findUnique({
       where: {
-        number: req.params.num,
+        name: req.params.name,
       },
     });
 
     if (data.status !== "pending") {
       await whatsapp.deleteSession(data?.name);
     } else {
-      console.log("kesini");
       const data = await prisma.WaSession.delete({
         where: {
-          number: req.params.num,
+          name: req.params.name,
         },
       });
     }
 
     io.emit("closed-session", data);
 
+    return res.status(200).json({
+      data: data,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getwa = async (req, res, next) => {
+  try {
+    // update status by name to active
+    const data = await prisma.WaSession.update({
+      where: {
+        name: req.body.name,
+      },
+      data: {
+        status: "active",
+      },
+    });
     return res.status(200).json({
       data: data,
     });

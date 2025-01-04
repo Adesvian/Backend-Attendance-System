@@ -109,7 +109,6 @@ async function handleConnectionUpdate(
 
   try {
     if (connection === "close") {
-      console.log("Disconnect Reason:", code);
       await handleDisconnectReasons(code, sessionName, attempt);
     } else if (connection === "connecting") {
       const cb = callback.get(CALLBACK_KEY.ON_CONNECTING);
@@ -124,7 +123,7 @@ async function handleConnectionUpdate(
       const cb = callback.get(CALLBACK_KEY.ON_CONNECTED);
       if (cb) {
         try {
-          await cb(connectedSocket.user.id);
+          await cb(sessionName);
         } catch (error) {
           console.error("Error in ON_CONNECTED callback:", error);
         }
@@ -171,7 +170,7 @@ async function handleDisconnectReasons(code, sessionName, attempt) {
         const io = getIO();
         io.emit("stop-session", sessionName);
         const cb = callback.get(CALLBACK_KEY.ON_DISCONNECTED);
-        cb?.(connectedSocket.user.id);
+        cb?.(sessionName);
         updQR = 0;
       }
     } catch (error) {
@@ -188,17 +187,18 @@ async function handleDisconnectReasons(code, sessionName, attempt) {
       });
 
       const cb = callback.get(CALLBACK_KEY.ON_DISCONNECTED);
-      cb?.(connectedSocket.user.id);
+      cb?.(sessionName);
 
-      const num = connectedSocket.user.id.split(":")[0];
-      const existingSession = await prisma.WaSession.findUnique({
-        where: { number: num },
+      const existingSession = await prisma.WaSession.findFirst({
+        where: {
+          name: sessionName,
+        },
       });
 
       if (existingSession) {
-        await prisma.WaSession.delete({ where: { number: num } });
+        await prisma.WaSession.delete({ where: { name: sessionName } });
       } else {
-        console.warn("No session found for user ID:", num);
+        console.warn("No session found for user ID:", sessionName);
       }
 
       io.emit("closed-session", sessionName);
@@ -266,11 +266,7 @@ exports.loadSession = () => {
       throw err;
     }
     for (const dir of dirs) {
-      if (!dir) {
-        console.log("kosong nih", dir);
-      } else {
-        console.log("ada cuys", dir);
-      }
+      if (!dir) continue;
       exports.connectToWhatsApp(dir);
     }
   });
