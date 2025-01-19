@@ -9,6 +9,7 @@ const attendance = require("./attendance_router");
 const auth = require("./auth_router");
 const threshold = require("./threshold_router");
 const events = require("./events_router");
+const logs = require("./logs_router");
 
 const MainRouter = Router();
 
@@ -25,5 +26,6 @@ MainRouter.use(threshold);
 MainRouter.use(WhatsappRouter);
 MainRouter.use(user);
 MainRouter.use(attendance);
+MainRouter.use(logs);
 
 module.exports = MainRouter;

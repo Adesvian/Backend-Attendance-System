@@ -6,12 +6,17 @@ const {
   addPermit,
   updateStatusPermit,
 } = require("../controllers/permit_controller");
+const { logger } = require("../controllers/log_controller");
+const { verifyToken } = require("../auth/auth");
 
 const permit = Router();
 
 permit.get("/permits", getPermits);
 permit.get("/permits-today", getPermitstoday);
-permit.post("/permits", upload.single("file"), addPermit);
-permit.put("/permits-udpate-status/:id", updateStatusPermit);
+
+permit.use(verifyToken);
+
+permit.post("/permits", upload.single("file"), addPermit, logger);
+permit.put("/permits-udpate-status/:id", updateStatusPermit, logger);
 
 module.exports = permit;

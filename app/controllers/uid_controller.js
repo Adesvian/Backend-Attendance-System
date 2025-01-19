@@ -1,35 +1,50 @@
 const prisma = require("../auth/prisma");
 const Error = require("../utils/error");
-const { getIO } = require("../utils/socketIO");
+const { getIO, activePages } = require("../utils/socketIO");
 const { createAttendance } = require("./attendance_controller");
 
 const processUid = async (rfid, req, res) => {
   const io = getIO();
   try {
-    const result = await prisma.student.findUnique({
+    // Periksa apakah halaman "form-student" sedang dibuka
+    const isPageActive = activePages.has("form-c-student");
+
+    // Cari data student berdasarkan RFID
+    const student = await prisma.student.findUnique({
       where: {
         rfid,
       },
     });
-    io.emit("get-uid", rfid);
-    if (!result) {
-      return res
-        .status(404)
-        .json({ status: false, message: "No student found." });
+
+    if (isPageActive || !student) {
+      // Emit "get-uid" setiap kali ada request
+      io.emit("get-uid", rfid);
+      // Jika form sedang dibuka, hanya emit tanpa melanjutkan ke createAttendance
+      return res.status(200).json({
+        status: 200,
+        message: "Form is open, skipping attendance creation.",
+      });
     } else {
-      const result = await createAttendance(req, res);
+      // Jika form tidak dibuka, lanjutkan proses createAttendance
+      const attendanceResult = await createAttendance(req, res);
+
+      // Emit "update-records" setelah attendance berhasil dibuat
       io.emit("update-records");
-      if (result.status > 200) {
-        return res
-          .status(result.status)
-          .json({ status: result.status, message: result.message });
+
+      // Kembalikan hasil dari proses createAttendance
+      if (attendanceResult.status > 200) {
+        return res.status(attendanceResult.status).json({
+          status: attendanceResult.status,
+          message: attendanceResult.message,
+        });
       } else {
         return res.status(200).json({ status: 200, message: "Success" });
       }
     }
   } catch (error) {
-    console.error(error);
-    throw new Error("Error processing RFID");
+    return res
+      .status(500)
+      .json({ status: 500, message: "Internal Server Error" });
   }
 };
 

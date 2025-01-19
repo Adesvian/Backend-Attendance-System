@@ -1,5 +1,6 @@
 const prisma = require("../auth/prisma");
 const bcrypt = require("bcryptjs");
+const { compareChanges } = require("../utils/compareChanges");
 
 // Function for Users controller
 exports.getUsers = async (req, res, next) => {
@@ -43,6 +44,10 @@ exports.addUser = async (req, res, next) => {
     const data = await prisma.user.create({
       data: req.body,
     });
+
+    req.body.activity = `Membuat data user "${req.body.role}": ${req.body.name}.`;
+    next();
+
     res.status(200).json({ msg: "Data created", data: data });
   } catch (error) {
     switch (error.code) {
@@ -77,9 +82,17 @@ exports.updateUser = async (req, res, next) => {
     const updatedData = {
       ...req.body,
       username:
-        req.body.username === "" ? existingUser.username : req.body.username,
+        req.body.username === "" ||
+        req.body.username === false ||
+        req.body.username === null ||
+        req.body.username === undefined
+          ? existingUser.username
+          : req.body.username,
       password:
-        req.body.password === ""
+        req.body.password === "" ||
+        req.body.password === false ||
+        req.body.password === null ||
+        req.body.password === undefined
           ? existingUser.password
           : await bcrypt.hash(req.body.password, 10),
     };
@@ -90,6 +103,16 @@ exports.updateUser = async (req, res, next) => {
       },
       data: updatedData,
     });
+
+    const changes = compareChanges(existingUser, updatedData);
+
+    if (Object.keys(changes).length !== 0) {
+      req.body.activity = `Update data user "${existingUser.role}": ${
+        existingUser.name
+      }.
+    Perubahan: ${JSON.stringify(changes)}.`;
+      next();
+    }
 
     res.status(200).json({ msg: "Data updated", data: data });
   } catch (error) {
@@ -121,6 +144,10 @@ exports.deleteUser = async (req, res, next) => {
         nid: req.params.id,
       },
     });
+
+    req.body.activity = `Menghapus data user "${data.role}": ${data.name}.`;
+    next();
+
     res.status(200).json({ msg: "Data deleted", data: data });
   } catch (error) {
     res.status(500).json({ msg: "Something went wrong" });
@@ -174,7 +201,6 @@ exports.getStudentCountByParentNid = async (req, res, next) => {
 
     res.status(200).json({ count: count });
   } catch (error) {
-    console.error("Error fetching student count:", error);
     res.status(500).json({ msg: "Something went wrong" });
   }
 };
@@ -204,9 +230,14 @@ exports.addStudent = async (req, res, next) => {
     const data = await prisma.student.create({
       data: req.body,
     });
+
+    req.body.activity = `Menambah data "Siswa": ${
+      req.body.name
+    } data: ${JSON.stringify(req.body)} `;
+    next();
+
     res.status(200).json({ msg: "Data created", data: data });
   } catch (error) {
-    console.log(error);
     switch (error.code) {
       case "P2002":
         res.status(409).json({
@@ -230,12 +261,29 @@ exports.addStudent = async (req, res, next) => {
 
 exports.updateStudent = async (req, res, next) => {
   try {
+    const existingData = await prisma.student.findUnique({
+      where: { rfid: req.params.id },
+    });
+
+    if (!existingData) {
+      return res.status(404).json({ msg: "Data not found" });
+    }
+
     const data = await prisma.student.update({
       where: {
         rfid: req.params.id,
       },
       data: req.body,
     });
+
+    const changes = compareChanges(existingData, req.body);
+
+    if (Object.keys(changes).length !== 0) {
+      req.body.activity = `Update data "Siswa": ${existingData.name}.
+    Perubahan: ${JSON.stringify(changes)}.`;
+      next();
+    }
+
     res.status(200).json({ msg: "Data updated", data: data });
   } catch (error) {
     switch (error.code) {
@@ -266,6 +314,10 @@ exports.deleteStudent = async (req, res, next) => {
         rfid: req.params.id,
       },
     });
+
+    req.body.activity = `Menghapus data "Siswa": ${data.name}.`;
+    next();
+
     res.status(200).json({ msg: "Data deleted", data: data });
   } catch (error) {
     res.status(500).json({ msg: "Something went wrong" });
@@ -302,6 +354,12 @@ exports.addParent = async (req, res, next) => {
     const data = await prisma.parent.create({
       data: req.body,
     });
+
+    req.body.activity = `Membuat data "parent": ${
+      req.body.name
+    } data: ${JSON.stringify(req.body)} `;
+    next();
+
     res.status(200).json({ msg: "Data created", data: data });
   } catch (error) {
     switch (error.code) {
@@ -327,12 +385,29 @@ exports.addParent = async (req, res, next) => {
 
 exports.updateParent = async (req, res, next) => {
   try {
+    const existingData = await prisma.parent.findUnique({
+      where: { nid: req.params.id },
+    });
+
+    if (!existingData) {
+      return res.status(404).json({ msg: "Data not found" });
+    }
+
     const data = await prisma.parent.update({
       where: {
         nid: req.params.id,
       },
       data: req.body,
     });
+
+    const changes = compareChanges(existingData, req.body);
+
+    if (Object.keys(changes).length !== 0) {
+      req.body.activity = `Update data "parent": ${existingData.name}.
+    Perubahan: ${JSON.stringify(changes)}.`;
+      next();
+    }
+
     res.status(200).json({ msg: "Data updated", data: data });
   } catch (error) {
     switch (error.code) {
@@ -363,6 +438,12 @@ exports.deleteParent = async (req, res, next) => {
         nid: req.params.id,
       },
     });
+
+    req.body.activity = `Menghapus data "parent": ${
+      data.name
+    }. Data: ${JSON.stringify(data)} `;
+    next();
+
     res.status(200).json({ msg: "Data deleted", data: data });
   } catch (error) {
     res.status(500).json({ msg: "Something went wrong" });
@@ -432,6 +513,9 @@ exports.addTeacher = async (req, res, next) => {
       },
     });
 
+    req.body.activity = `Membuat data "teacher" dengan NIK: ${data.nid}`;
+    next();
+
     res.status(201).json({ msg: "Data created", data: data });
   } catch (error) {
     switch (error.code) {
@@ -460,7 +544,15 @@ exports.addTeacher = async (req, res, next) => {
 
 exports.updateTeacher = async (req, res, next) => {
   try {
-    const data = await prisma.teacher.update({
+    const existingData = await prisma.teacher.findUnique({
+      where: { nid: req.params.id },
+    });
+
+    if (!existingData) {
+      return res.status(404).json({ msg: "Data not found" });
+    }
+
+    const updatedData = await prisma.teacher.update({
       where: {
         nid: req.params.id,
       },
@@ -475,7 +567,18 @@ exports.updateTeacher = async (req, res, next) => {
         address: req.body.address,
       },
     });
-    res.status(200).json({ msg: "Data updated", data: data });
+
+    const changes = compareChanges(existingData, req.body);
+
+    if (Object.keys(changes).length !== 0) {
+      req.body.activity = `Update data "teacher" dengan NIK: ${
+        existingData.nid
+      }. 
+    Perubahan: ${JSON.stringify(changes)}.`;
+      next();
+    }
+
+    res.status(200).json({ msg: "Data updated", data: updatedData });
   } catch (error) {
     switch (error.code) {
       case "P2002":
@@ -495,6 +598,7 @@ exports.updateTeacher = async (req, res, next) => {
       default:
         res.status(500).json({
           msg: "Internal server error.",
+          error: error.message,
         });
         break;
     }
@@ -508,6 +612,10 @@ exports.deleteTeacher = async (req, res, next) => {
         nid: req.params.id,
       },
     });
+
+    req.body.activity = `Delete data "teacher" dengan NIK: ${req.params.id}.`;
+    next();
+
     res.status(200).json({ msg: "Data deleted", data: data });
   } catch (error) {
     res.status(500).json({ msg: "Something went wrong" });
@@ -541,7 +649,6 @@ exports.verify_reset = async (req, res, next) => {
 
     res.status(200).json({ data: true });
   } catch (error) {
-    console.error(error); // Tambahkan log untuk debugging
     res.status(500).json({ msg: "Something went wrong" });
   }
 };
@@ -549,6 +656,18 @@ exports.verify_reset = async (req, res, next) => {
 exports.reset_password = async (req, res, next) => {
   try {
     const { username, nid, password } = req.body;
+
+    const existingData = await prisma.user.findMany({
+      where: {
+        username: username,
+      },
+    });
+
+    if (existingData.length === 0) {
+      return res
+        .status(404)
+        .json({ data: false, msg: "Username tidak ditemukan." });
+    }
 
     if (!username || !nid || !password) {
       return res
@@ -586,9 +705,206 @@ exports.reset_password = async (req, res, next) => {
         .json({ data: false, msg: "Username atau NIK tidak ditemukan." });
     }
 
-    res.status(200).json({ data: true, msg: "Password berhasil diubah." });
+    const changes = compareChanges(existingData[0], {
+      password: hashedPassword,
+    });
+
+    req.isReset = true;
+
+    if (Object.keys(changes).length !== 0) {
+      req.body.activity = `Melakukan reset password: ${JSON.stringify(
+        changes
+      )}.`;
+      next();
+    }
   } catch (error) {
-    console.error(error); // Log error untuk debugging
     res.status(500).json({ msg: "Terjadi kesalahan pada server." });
+  }
+};
+
+exports.createParentAndUser = async (req, res, next) => {
+  const { parentData, userData } = req.body;
+
+  try {
+    // Cek apakah parentData atau userData kosong
+    if (!parentData || !userData) {
+      return res
+        .status(400)
+        .json({ msg: "Invalid data: parentData or userData is missing." });
+    }
+
+    // Hash password untuk user
+    const hashedPassword = await bcrypt.hash(userData.password, 10);
+    userData.password = hashedPassword;
+
+    // Gunakan transaksi Prisma
+    const [parent, user] = await prisma.$transaction([
+      prisma.parent.create({ data: parentData }),
+      prisma.user.create({ data: userData }),
+    ]);
+
+    req.body.activity = `Membuat data "parent" dan "user" dengan NIK: ${parent.nid}`;
+    next();
+
+    res.status(201).json({
+      msg: "Parent and User created successfully",
+      parent,
+      user,
+    });
+  } catch (error) {
+    // Tangani error berdasarkan kode Prisma
+    switch (error.code) {
+      case "P2002":
+        res.status(409).json({
+          msg: "Unique constraint failed.",
+          error: error.code,
+          field: error.meta.target,
+        });
+        break;
+      case "P2003":
+        res.status(400).json({
+          msg: "Foreign key constraint failed.",
+          error: error.code,
+          field: error.meta.target,
+        });
+        break;
+      default:
+        res
+          .status(500)
+          .json({ msg: "Something went wrong", error: error.message });
+    }
+  }
+};
+
+exports.updateParentAndUser = async (req, res, next) => {
+  const { parentData, userData } = req.body;
+  const nid = req.params.id;
+
+  try {
+    // Cari data lama parent dan user
+    const existingParent = await prisma.parent.findUnique({ where: { nid } });
+    const existingUser = await prisma.user.findUnique({ where: { nid } });
+
+    if (!existingParent || !existingUser) {
+      return res.status(404).json({ msg: "Data not found" });
+    }
+
+    // Siapkan data yang akan diperbarui
+    const updatedParentData = { ...parentData };
+    const updatedUserData = {
+      ...userData,
+      password:
+        userData.password && userData.password !== existingUser.password
+          ? await bcrypt.hash(userData.password, 10)
+          : existingUser.password,
+    };
+
+    // Gunakan transaksi Prisma untuk update atomik
+    const [updatedParent, updatedUser] = await prisma.$transaction([
+      prisma.parent.update({
+        where: { nid },
+        data: updatedParentData,
+      }),
+      prisma.user.update({
+        where: { nid },
+        data: updatedUserData,
+      }),
+    ]);
+
+    // Cek perubahan dan catat aktivitas
+    const parentChanges = compareChanges(existingParent, updatedParentData);
+    const userChanges = compareChanges(existingUser, updatedUserData);
+
+    if (
+      Object.keys(parentChanges).length > 0 ||
+      Object.keys(userChanges).length > 0
+    ) {
+      req.body.activity = `Update Parent: ${
+        existingParent.name
+      }, Changes: ${JSON.stringify(parentChanges)}. Update User: ${
+        existingUser.name
+      }, Changes: ${JSON.stringify(userChanges)}.`;
+      next();
+    }
+
+    res.status(200).json({
+      msg: "Parent and User updated successfully",
+      updatedParent,
+      updatedUser,
+    });
+  } catch (error) {
+    switch (error.code) {
+      case "P2002":
+        res.status(409).json({
+          msg: "Unique constraint failed.",
+          error: error.code,
+          field: error.meta.target,
+        });
+        break;
+      case "P2003":
+        res.status(400).json({
+          msg: "Foreign key constraint failed.",
+          error: error.code,
+          field: error.meta.target,
+        });
+        break;
+      default:
+        res
+          .status(500)
+          .json({ msg: "Something went wrong", error: error.message });
+    }
+  }
+};
+
+exports.createStudentWithParent = async (req, res, next) => {
+  const { studentData, parentData, userData } = req.body;
+
+  try {
+    let hashedPassword = null;
+
+    // Hash password jika userData tersedia dan memiliki password
+    if (userData && userData.password) {
+      hashedPassword = await bcrypt.hash(userData.password, 10);
+      userData.password = hashedPassword; // Overwrite password dengan hashed password
+    }
+
+    // Jalankan transaksi
+    await prisma.$transaction(
+      [
+        parentData ? prisma.parent.create({ data: parentData }) : null,
+        userData ? prisma.user.create({ data: userData }) : null,
+        prisma.student.create({ data: studentData }),
+      ].filter(Boolean)
+    ); // filter(Boolean) untuk menghapus null
+
+    // Tambahkan aktivitas ke request body untuk proses logging
+    req.body.activity = `Menambah data "Siswa": ${
+      studentData.name
+    } data: ${JSON.stringify(req.body)} `;
+    next();
+
+    res.status(200).json({ message: "Success! All data created." });
+  } catch (error) {
+    // Error handling dengan switch case
+    switch (error.code) {
+      case "P2002":
+        res.status(409).json({
+          msg: "Unique constraint failed.",
+          error: error.code,
+          field: error.meta.target,
+        });
+        break;
+      case "P2003":
+        res.status(400).json({
+          msg: "Foreign key constraint failed.",
+          error: error.code,
+          field: error.meta.target,
+        });
+        break;
+      default:
+        res
+          .status(500)
+          .json({ msg: "Something went wrong", error: error.message });
+    }
   }
 };

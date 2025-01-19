@@ -7,13 +7,17 @@ const {
   deleteSubjects,
 } = require("../controllers/subject_controller");
 const { verifyToken } = require("../auth/auth");
+const { logger } = require("../controllers/log_controller");
 
 const subject = Router();
 
 subject.get("/subjects", getSubjects);
 subject.get("/subjects/:id", getSubjectById);
-subject.post("/subjects", addSubjects);
-subject.put("/subjects/:id", updateSubjects);
-subject.delete("/subjects/:id", deleteSubjects);
+
+subject.use(verifyToken);
+
+subject.post("/subjects", addSubjects, logger);
+subject.put("/subjects/:id", updateSubjects, logger);
+subject.delete("/subjects/:id", deleteSubjects, logger);
 
 module.exports = subject;

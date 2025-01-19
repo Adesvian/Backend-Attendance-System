@@ -6,13 +6,15 @@ const {
   updateEvent,
   deleteEvent,
 } = require("../controllers/event_controller");
+const { logger } = require("../controllers/log_controller");
 
 const events = express.Router();
 
-events.post("/events", createEvent);
 events.get("/events", getEvents);
 events.get("/events/:id", getEventById);
-events.put("/events/:id", updateEvent);
-events.delete("/events/:id", deleteEvent);
+
+events.post("/events", createEvent, logger);
+events.put("/events/:id", updateEvent, logger);
+events.delete("/events/:id", deleteEvent, logger);
 
 module.exports = events;

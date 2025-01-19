@@ -1,4 +1,5 @@
 const prisma = require("../auth/prisma");
+const { compareChanges } = require("../utils/compareChanges");
 
 // Function for Classes controller
 exports.getClasses = async (req, res, next) => {
@@ -117,6 +118,12 @@ exports.createClassSchedule = async (req, res, next) => {
     const data = await prisma.classSchedule.create({
       data: req.body,
     });
+
+    req.body.activity = `Membuat data jadwal mata pelajaran untuk Guru dengan NIK: ${
+      req.body.teacher_nid
+    } data: ${JSON.stringify(req.body)} `;
+    next();
+
     res.status(200).json({ data: data });
   } catch (error) {
     switch (error.code) {
@@ -145,12 +152,33 @@ exports.createClassSchedule = async (req, res, next) => {
 
 exports.updateClassSchedule = async (req, res, next) => {
   try {
+    const existingData = await prisma.classSchedule.findUnique({
+      where: {
+        id: parseInt(req.params.id),
+      },
+    });
+
+    if (!existingData) {
+      return res.status(404).json({ msg: "Data not found" });
+    }
+
     const data = await prisma.classSchedule.update({
       where: {
         id: parseInt(req.params.id),
       },
       data: req.body,
     });
+
+    const changes = compareChanges(existingData, req.body);
+
+    if (Object.keys(changes).length !== 0) {
+      req.body.activity = `Update data jadwal mata pelajaran Guru: ${
+        existingData.teacher_nid
+      }.
+        Perubahan: ${JSON.stringify(changes)}.`;
+      next();
+    }
+
     res.status(200).json({ data: data });
   } catch (error) {
     switch (error.code) {
@@ -184,6 +212,10 @@ exports.deleteClassSchedule = async (req, res, next) => {
         id: parseInt(req.params.id),
       },
     });
+
+    req.body.activity = `Menghapus data jadwal mata pelajaran Guru: ${data.teacher_nid}.`;
+    next();
+
     res.status(200).json({ data: data });
   } catch (error) {
     res.status(500).json({ msg: "Something went wrong" });
@@ -239,6 +271,11 @@ exports.addEnrollment = async (req, res, next) => {
       })
     );
 
+    req.body.activity = `Menambahkan data enrollment. Data: ${JSON.stringify(
+      req.body
+    )} `;
+    next();
+
     res.status(200).json({ data: enrollments });
   } catch (error) {
     console.log(error);
@@ -259,8 +296,9 @@ exports.addEnrollment = async (req, res, next) => {
   }
 };
 
-exports.removeEnrollment = async (req, res) => {
+exports.removeEnrollment = async (req, res, next) => {
   const { student_rfid, ekstrakurikuler } = req.body;
+
   if (!student_rfid || !ekstrakurikuler) {
     return res
       .status(400)
@@ -282,6 +320,11 @@ exports.removeEnrollment = async (req, res) => {
     if (result.count === 0) {
       return res.status(404).json({ msg: "No enrollment found to remove." });
     }
+
+    req.body.activity = `Menghapus data enrollment. Data: ${JSON.stringify(
+      req.body
+    )}`;
+    next();
 
     res
       .status(200)

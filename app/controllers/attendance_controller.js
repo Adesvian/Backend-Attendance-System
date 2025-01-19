@@ -23,11 +23,11 @@ exports.getAttendances = async (req, res, next) => {
     }
 
     if (rfid) {
-      whereClause.student_rfid = { contains: rfid };
+      whereClause.student_rfid = rfid;
     }
 
     if (name) {
-      whereClause.student_name = { contains: name };
+      whereClause.student_name = name;
     }
 
     if (kelas) {
@@ -57,7 +57,7 @@ exports.getAttendances = async (req, res, next) => {
 
 exports.getAttendancestoday = async (req, res, next) => {
   try {
-    const { rfid, class: kelas } = req.query;
+    const { rfid, class: kelas, method } = req.query;
     // Get the start and end of today in Unix timestamp format
     const startOfDay = Math.floor(new Date().setHours(0, 0, 0, 0) / 1000);
     const endOfDay = Math.floor(new Date().setHours(23, 59, 59, 999) / 1000);
@@ -69,13 +69,66 @@ exports.getAttendancestoday = async (req, res, next) => {
       },
     };
 
+    if (method) {
+      whereClause.method = parseInt(method);
+    }
+
     if (kelas) {
       const kelasArray = kelas.split(",").map((k) => parseInt(k.trim()));
       whereClause.class_id = { in: kelasArray };
     }
 
     if (rfid) {
-      whereClause.student_rfid = rfid;
+      const rfidArray = rfid.split(",").map((k) => k.trim());
+      whereClause.student_rfid = { in: rfidArray };
+    }
+
+    const data = await prisma.attendanceRecord.findMany({
+      where: whereClause,
+      include: { student: { include: { class: true } } },
+    });
+
+    res.status(200).json({ data: data });
+  } catch (error) {
+    res.status(500).json({ msg: "Something went wrong" });
+  }
+};
+
+exports.getAttendancesByMonth = async (req, res, next) => {
+  try {
+    const { rfid, class: kelas, method } = req.query;
+    // Get the start and end of month in Unix timestamp format
+    const startOfMonth = Math.floor(
+      new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime() /
+        1000
+    );
+    const endOfMonth = Math.floor(
+      new Date(
+        new Date().getFullYear(),
+        new Date().getMonth() + 1,
+        0
+      ).getTime() / 1000
+    );
+
+    const whereClause = {
+      date: {
+        gte: startOfMonth,
+        lte: endOfMonth,
+      },
+    };
+
+    if (method) {
+      whereClause.method = parseInt(method);
+    }
+
+    if (kelas) {
+      const kelasArray = kelas.split(",").map((k) => parseInt(k.trim()));
+      whereClause.class_id = { in: kelasArray };
+    }
+
+    if (rfid) {
+      const rfidArray = rfid.split(",").map((k) => k.trim());
+      whereClause.student_rfid = { in: rfidArray };
     }
 
     const data = await prisma.attendanceRecord.findMany({
@@ -517,12 +570,28 @@ const getCurrentSubjectTime = async (classId, unix_timestamp, dayName) => {
   }
 };
 
-exports.deleteAttendance = async (req, res) => {
+exports.deleteAttendance = async (req, res, next) => {
   try {
     const { id } = req.params;
+
+    const existingData = await prisma.attendanceRecord.findUnique({
+      where: { id: Number(id) },
+      include: { student: { select: { name: true } } },
+    });
+
+    if (!existingData) {
+      throw new Error("Data not found");
+    }
+
     const result = await prisma.attendanceRecord.delete({
       where: { id: Number(id) },
     });
+
+    req.body.activity = `Menghapus data kehadiran "Attendance": ${
+      existingData.student.name
+    }. Data: ${JSON.stringify(result)} `;
+    next();
+
     res.status(200).json(result);
   } catch (error) {
     console.error("Error deleting attendance:", error);
@@ -530,12 +599,28 @@ exports.deleteAttendance = async (req, res) => {
   }
 };
 
-exports.deleteSubjectAttendance = async (req, res) => {
+exports.deleteSubjectAttendance = async (req, res, next) => {
   try {
     const { id } = req.params;
+
+    const existingData = await prisma.subjectAttendance.findUnique({
+      where: { id: Number(id) },
+      include: { student: { select: { name: true } } },
+    });
+
+    if (!existingData) {
+      throw new Error("Data not found");
+    }
+
     const result = await prisma.subjectAttendance.delete({
       where: { id: Number(id) },
     });
+
+    req.body.activity = `Menghapus data kehadiran "Subject Attendance": ${
+      existingData.student.name
+    }. Data: ${JSON.stringify(result)} `;
+    next();
+
     res.status(200).json(result);
   } catch (error) {
     console.error("Error deleting subject attendance:", error);

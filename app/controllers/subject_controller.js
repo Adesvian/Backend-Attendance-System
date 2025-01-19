@@ -1,4 +1,5 @@
 const prisma = require("../auth/prisma");
+const { compareChanges } = require("../utils/compareChanges");
 
 // Function for Subject controller
 exports.getSubjects = async (req, res, next) => {
@@ -34,6 +35,10 @@ exports.addSubjects = async (req, res, next) => {
         category_id: req.body.category_id,
       },
     });
+
+    req.body.activity = `Membuat data mata pelajaran: ${req.body.name}`;
+    next();
+
     res.status(200).json({ data: data });
   } catch (error) {
     switch (error.code) {
@@ -62,6 +67,16 @@ exports.addSubjects = async (req, res, next) => {
 
 exports.updateSubjects = async (req, res, next) => {
   try {
+    const existingData = await prisma.subject.findUnique({
+      where: {
+        id: parseInt(req.params.id),
+      },
+    });
+
+    if (!existingData) {
+      return res.status(404).json({ msg: "Data not found" });
+    }
+
     const data = await prisma.subject.update({
       where: {
         id: parseInt(req.params.id),
@@ -71,6 +86,15 @@ exports.updateSubjects = async (req, res, next) => {
         category_id: req.body.category_id,
       },
     });
+
+    const changes = compareChanges(existingData, req.body);
+
+    if (Object.keys(changes).length !== 0) {
+      req.body.activity = `Update data mata pelajaran: ${existingData.id}. 
+    Perubahan: ${JSON.stringify(changes)}.`;
+      next();
+    }
+
     res.status(200).json({ data: data });
   } catch (error) {
     switch (error.code) {
@@ -99,11 +123,25 @@ exports.updateSubjects = async (req, res, next) => {
 
 exports.deleteSubjects = async (req, res, next) => {
   try {
+    const existingData = await prisma.subject.findUnique({
+      where: {
+        id: parseInt(req.params.id),
+      },
+    });
+
+    if (!existingData) {
+      return res.status(404).json({ msg: "Data not found" });
+    }
+
     const data = await prisma.subject.delete({
       where: {
         id: parseInt(req.params.id),
       },
     });
+
+    req.body.activity = `Delete data mata pelajaran: ${existingData.name}`;
+    next();
+
     res.status(200).json({ data: data });
   } catch (error) {
     res.status(500).json({ msg: "Something went wrong" });

@@ -7,7 +7,7 @@ const encrypt = (key, data) => {
   return CryptoJs.AES.encrypt(data, key).toString();
 };
 
-exports.login = async (req, res) => {
+exports.login = async (req, res, next) => {
   const { username, password } = req.body;
   try {
     const user = await prisma.user.findUnique({
@@ -59,10 +59,13 @@ exports.login = async (req, res) => {
 
     const { id, nid, name, role } = user;
 
-    res.status(200).json({
+    req.loginresponse = {
       token,
       data: { id, nid, name, role },
-    });
+    };
+
+    req.body.activity = "Successfully logged in";
+    next();
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Something went wrong with server" });
@@ -73,11 +76,25 @@ exports.getCookies = (req, res) => {
   res.json(req.cookies);
 };
 
-exports.logout = async (req, res) => {
+exports.logout = async (req, res, next) => {
   const cookies = req.cookies._USER_AUTH_RAMADHAN;
-  if (!cookies) return res.sendStatus(204);
-  res.clearCookie("_USER_AUTH_RAMADHAN");
-  res.status(200).json({ message: "Logout success" });
+  if (!cookies) {
+    return res.status(200).json({ message: "No session to logout" });
+  }
+  res.clearCookie("_USER_AUTH_RAMADHAN", {
+    path: "/",
+    httpOnly: true,
+    secure: true,
+  });
+
+  req.body.username = jwt.verify(
+    req.headers.authorization.slice(7),
+    process.env.JWT_SECRET
+  ).username;
+  req.body.activity = "Successfully logged out";
+  next();
+
+  return res.status(200).json({ message: "Logout success" });
 };
 
 exports.verifyToken = (req, res, next) => {
