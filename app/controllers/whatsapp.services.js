@@ -156,7 +156,7 @@ async function handleDisconnectReasons(code, sessionName, attempt) {
       const count = await countFiles();
       if (count === 0) {
         try {
-          fs.rmSync(`./sessions/${sessionName}`, {
+          fs.rmSync(path.join(process.env.WA_DIR_NAME, sessionName), {
             force: true,
             recursive: true,
           });

@@ -3,6 +3,19 @@ const { responseSuccessWithData } = require("../utils/response");
 const Error = require("../utils/error");
 const prisma = require("../auth/prisma");
 const { getIO } = require("../utils/socketIO");
+const { compareChanges } = require("../utils/compareChanges");
+
+exports.findsession = async (name) => {
+  const existingData = await prisma.WaSession.findUnique({
+    where: { name: name },
+  });
+
+  if (!existingData) {
+    throw new Error("Data not found");
+  }
+
+  return existingData;
+};
 
 exports.createSession = async (req, res, next) => {
   try {
@@ -34,18 +47,14 @@ exports.createSession = async (req, res, next) => {
 
 exports.stopSession = async (req, res, next) => {
   try {
-    const data = await prisma.WaSession.findUnique({
-      where: {
-        name: req.body.name,
-      },
-    });
-    const sessionName = data?.name;
+    const existingData = await this.findsession(req.body.name);
+    const sessionName = existingData?.name;
     if (!sessionName) {
       throw new Error.ValidationError("Bad Request");
     }
     await whatsapp.stopSession(sessionName);
 
-    await prisma.WaSession.update({
+    const data = await prisma.WaSession.update({
       where: {
         name: req.body.name,
       },
@@ -53,6 +62,16 @@ exports.stopSession = async (req, res, next) => {
         status: "inactive",
       },
     });
+
+    const changes = compareChanges(existingData, data);
+
+    if (Object.keys(changes).length !== 0) {
+      req.body.activity = `Memperbarui sesi WhatsApp: ${
+        req.body.name
+      }. Update ${JSON.stringify(changes)}.`;
+      next();
+    }
+
     res.status(200).json(
       responseSuccessWithData({
         message: "Session stopped",
@@ -65,16 +84,13 @@ exports.stopSession = async (req, res, next) => {
 
 exports.startSession = async (req, res, next) => {
   try {
-    const data = await prisma.WaSession.findUnique({
-      where: {
-        name: req.body.name,
-      },
-    });
-    const sessionName = data?.name;
+    const existingData = await this.findsession(req.body.name);
+    const sessionName = existingData?.name;
     if (!sessionName) {
       throw new Error.ValidationError("Bad Request");
     }
     await whatsapp.startSession(sessionName);
+
     res.status(200).json(
       responseSuccessWithData({
         message: "Session started",
@@ -133,6 +149,10 @@ exports.createWhatsappCreds = async (req, res, next) => {
       data: req.body,
     });
     io.emit("creds-created", data);
+
+    req.body.activity = `Membuat sesi WhatsApp: ${req.body.name}`;
+    next();
+
     return res.status(200).json({
       data: data,
     });
@@ -143,12 +163,24 @@ exports.createWhatsappCreds = async (req, res, next) => {
 
 exports.updateWhatsappCreds = async (req, res, next) => {
   try {
+    const existingData = await this.findsession(req.params.name);
+
     const data = await prisma.WaSession.update({
       where: {
         name: req.params.name,
       },
       data: req.body,
     });
+
+    const changes = compareChanges(existingData, data);
+
+    if (Object.keys(changes).length !== 0) {
+      req.body.activity = `Memperbarui sesi WhatsApp: ${
+        req.params.name
+      }. Update ${JSON.stringify(changes)}.`;
+      next();
+    }
+
     return res.status(200).json({
       data: data,
     });
@@ -179,25 +211,9 @@ exports.deleteWhatsappCreds = async (req, res, next) => {
 
     io.emit("closed-session", data);
 
-    return res.status(200).json({
-      data: data,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
+    req.body.activity = `Menghapus sesi WhatsApp: ${req.params.name}`;
+    next();
 
-exports.getwa = async (req, res, next) => {
-  try {
-    // update status by name to active
-    const data = await prisma.WaSession.update({
-      where: {
-        name: req.body.name,
-      },
-      data: {
-        status: "active",
-      },
-    });
     return res.status(200).json({
       data: data,
     });

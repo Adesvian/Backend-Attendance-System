@@ -48,7 +48,6 @@ whatsapp.onConnecting((listener) => {
 });
 
 whatsapp.onConnected((listener) => {
-  console.log(`WhatsApp ${listener} Connected`);
   const io = getIO();
   io.emit("connected-creds", listener);
   console.log(`WhatsApp ${listener} Connected`);

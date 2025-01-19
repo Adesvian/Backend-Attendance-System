@@ -1,4 +1,5 @@
 const prisma = require("../auth/prisma");
+const { compareChanges } = require("../utils/compareChanges");
 
 exports.getPermits = async (req, res, next) => {
   try {
@@ -88,6 +89,15 @@ exports.addPermit = async (req, res, next) => {
       },
     });
 
+    const student = await prisma.student.findUnique({
+      where: { rfid: rfid },
+    });
+
+    req.body.activity = `Membuat pengajuan izin untuk: ${
+      student.name
+    }. Data: ${JSON.stringify(data)}`;
+    next();
+
     res.status(201).json({
       success: true,
       data,
@@ -99,12 +109,34 @@ exports.addPermit = async (req, res, next) => {
 
 exports.updateStatusPermit = async (req, res, next) => {
   try {
+    const existingData = await prisma.permit.findUnique({
+      where: {
+        id: parseInt(req.params.id),
+      },
+    });
+
+    if (!existingData) {
+      return res.status(404).json({ msg: "Data not found" });
+    }
+
     const data = await prisma.permit.update({
       where: {
         id: parseInt(req.params.id),
       },
       data: req.body,
     });
+
+    const student = await prisma.student.findUnique({
+      where: { rfid: data.student_rfid },
+    });
+
+    const changes = compareChanges(existingData, req.body);
+
+    req.body.activity = `Update status izin untuk: ${
+      student.name
+    }. Data: ${JSON.stringify(changes)}`;
+    next();
+
     res.status(200).json({ data: data });
   } catch (error) {
     res.status(500).json({ msg: "Something went wrong" });

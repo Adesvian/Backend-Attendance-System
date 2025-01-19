@@ -8,20 +8,23 @@ const {
   stopSession,
   startSession,
   sendMessage,
-  getwa,
 } = require("../controllers/whatsapp_controller");
 const { verifyToken } = require("../auth/auth");
+const { logger } = require("../controllers/log_controller");
 
 const WhatsappRouter = Router();
 
-WhatsappRouter.get("/isexist", getwa);
-WhatsappRouter.post("/create-session", createSession);
-WhatsappRouter.post("/start-session", startSession);
-WhatsappRouter.post("/stop-session", stopSession);
-WhatsappRouter.post("/send-message", sendMessage);
 WhatsappRouter.get("/get-whatsapp-creds", verifyToken, getWhatsappCreds);
-WhatsappRouter.post("/create-whatsapp-creds", createWhatsappCreds);
-WhatsappRouter.put("/update-whatsapp-creds/:name", updateWhatsappCreds);
-WhatsappRouter.delete("/delete-whatsapp-creds/:name", deleteWhatsappCreds);
+WhatsappRouter.post("/create-whatsapp-creds", createWhatsappCreds, logger);
+WhatsappRouter.post("/create-session", createSession, logger);
+WhatsappRouter.post("/start-session", startSession);
+WhatsappRouter.post("/stop-session", stopSession, logger);
+WhatsappRouter.post("/send-message", sendMessage);
+WhatsappRouter.put("/update-whatsapp-creds/:name", updateWhatsappCreds, logger);
+WhatsappRouter.delete(
+  "/delete-whatsapp-creds/:name",
+  deleteWhatsappCreds,
+  logger
+);
 
 module.exports = WhatsappRouter;

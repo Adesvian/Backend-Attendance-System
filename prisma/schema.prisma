@@ -175,3 +175,10 @@ model EnrollmentExtra {
 
   @@unique([student_rfid, ekstrakurikuler])
 }
+
+model Log {
+  id        BigInt @id @default(autoincrement())
+  user      String @db.VarChar(255)
+  activity  String @db.LongText
+  date_time Int
+}
