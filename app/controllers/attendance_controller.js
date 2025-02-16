@@ -96,20 +96,30 @@ exports.getAttendancestoday = async (req, res, next) => {
 
 exports.getAttendancesByMonth = async (req, res, next) => {
   try {
-    const { rfid, class: kelas, method } = req.query;
-    // Get the start and end of month in Unix timestamp format
+    const { rfid, class: kelas, method, date } = req.query;
+
+    // Pastikan parameter date dikirim dan valid
+    if (!date) {
+      return res.status(400).json({ msg: "Date parameter is required." });
+    }
+
+    // Konversi date menjadi objek Date
+    const inputDate = new Date(date);
+    if (isNaN(inputDate.getTime())) {
+      return res.status(400).json({ msg: "Invalid date format." });
+    }
+
+    // Hitung awal bulan dan akhir bulan berdasarkan date parameter
     const startOfMonth = Math.floor(
-      new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime() /
+      new Date(inputDate.getFullYear(), inputDate.getMonth(), 1).getTime() /
         1000
     );
     const endOfMonth = Math.floor(
-      new Date(
-        new Date().getFullYear(),
-        new Date().getMonth() + 1,
-        0
-      ).getTime() / 1000
+      new Date(inputDate.getFullYear(), inputDate.getMonth() + 1, 0).getTime() /
+        1000
     );
 
+    // Bangun whereClause untuk Prisma query
     const whereClause = {
       date: {
         gte: startOfMonth,
@@ -131,13 +141,16 @@ exports.getAttendancesByMonth = async (req, res, next) => {
       whereClause.student_rfid = { in: rfidArray };
     }
 
+    // Fetch data dari database
     const data = await prisma.attendanceRecord.findMany({
       where: whereClause,
       include: { student: { include: { class: true } } },
     });
 
-    res.status(200).json({ data: data });
+    // Kirim hasil sebagai respons
+    res.status(200).json({ data });
   } catch (error) {
+    console.error("Error fetching attendance records:", error);
     res.status(500).json({ msg: "Something went wrong" });
   }
 };

@@ -39,7 +39,8 @@ exports.getThresholds = async (req, res, next) => {
 
 exports.setTimeThreshold = async (req, res, next, method) => {
   try {
-    const classIds = [1, 2, 3, 4, 5, 6];
+    const elementaryClasses = [1, 2, 3, 4, 5, 6];
+    const preschoolClasses = [7, 8, 9];
 
     if (req.body.time) {
       const [hours, minutes] = req.body.time.split(":");
@@ -47,11 +48,18 @@ exports.setTimeThreshold = async (req, res, next, method) => {
       req.body.time = timeDate;
 
       if (method === 1001) {
-        // Check-in time logic
-        if (timeDate > new Date(Date.UTC(1970, 0, 1, 7, 30, 0))) {
-          req.body.custom_time = "iscustom";
+        if (req.body.type === "elementary") {
+          if (timeDate > new Date(Date.UTC(1970, 0, 1, 7, 30, 0))) {
+            req.body.custom_time = "iscustom";
+          } else {
+            req.body.custom_time = null;
+          }
         } else {
-          req.body.custom_time = null;
+          if (timeDate > new Date(Date.UTC(1970, 0, 1, 7, 45, 0))) {
+            req.body.custom_time = "iscustom";
+          } else {
+            req.body.custom_time = null;
+          }
         }
       } else if (method === 1002) {
         if (timeDate > new Date(Date.UTC(1970, 0, 1, 13, 0, 0))) {
@@ -71,23 +79,26 @@ exports.setTimeThreshold = async (req, res, next, method) => {
     if (method === 1001) {
       const data = await prisma.timeThreshold.updateMany({
         where: {
-          class_id: { in: classIds },
+          class_id: {
+            in:
+              req.body.type === "elementary"
+                ? elementaryClasses
+                : preschoolClasses,
+          },
           method: method,
         },
-        data: req.body,
+        data: (({ type, ...rest }) => rest)(req.body),
       });
-
       res.status(200).json({ data });
     } else if (method === 1002) {
       const data = await prisma.timeThreshold.updateMany({
         where: {
-          class_id: { in: classIds },
+          class_id: { in: elementaryClasses },
           method: method,
           custom_time: null,
         },
         data: req.body,
       });
-
       res.status(200).json({ data });
     } else {
       res.status(400).json({ msg: "Invalid method for this action" });

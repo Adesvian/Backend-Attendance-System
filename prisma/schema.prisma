@@ -20,6 +20,7 @@ model User {
 model Student {
   rfid           String    @id @db.VarChar(100)
   name           String    @db.VarChar(255)
+  level          String    @db.VarChar(100)
   class_id       Int
   gender         String    @db.VarChar(100)
   birth_of_place String?   @db.VarChar(100)
@@ -47,14 +48,15 @@ model Parent {
 }
 
 model Teacher {
-  nid            String    @id @db.VarChar(100)
-  name           String    @db.VarChar(255)
-  gender         String    @db.VarChar(100)
-  birth_of_place String?   @db.VarChar(100)
-  birth_of_date  DateTime?
-  type           String    @db.VarChar(100)
-  class_id       Int?      @unique
-  address        String?   @db.VarChar(255)
+  nid             String    @id @db.VarChar(100)
+  name            String    @db.VarChar(255)
+  gender          String    @db.VarChar(100)
+  birth_of_place  String?   @db.VarChar(100)
+  birth_of_date   DateTime?
+  type            String    @db.VarChar(100)
+  education_level String?   @db.VarChar(100)
+  class_id        Int?      @unique
+  address         String?   @db.VarChar(255)
 
   classSchedules ClassSchedule[]
   class          Class?          @relation(fields: [class_id], references: [id])

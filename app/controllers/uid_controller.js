@@ -15,7 +15,6 @@ const processUid = async (rfid, req, res) => {
         rfid,
       },
     });
-
     if (isPageActive || !student) {
       // Emit "get-uid" setiap kali ada request
       io.emit("get-uid", rfid);
