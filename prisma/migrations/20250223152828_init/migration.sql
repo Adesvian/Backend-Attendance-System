@@ -16,6 +16,7 @@ CREATE TABLE `User` (
 CREATE TABLE `Student` (
     `rfid` VARCHAR(100) NOT NULL,
     `name` VARCHAR(255) NOT NULL,
+    `level` VARCHAR(100) NOT NULL,
     `class_id` INTEGER NOT NULL,
     `gender` VARCHAR(100) NOT NULL,
     `birth_of_place` VARCHAR(100) NULL,
@@ -46,6 +47,7 @@ CREATE TABLE `Teacher` (
     `birth_of_place` VARCHAR(100) NULL,
     `birth_of_date` DATETIME(3) NULL,
     `type` VARCHAR(100) NOT NULL,
+    `education_level` VARCHAR(100) NULL,
     `class_id` INTEGER NULL,
     `address` VARCHAR(255) NULL,
 
@@ -90,7 +92,6 @@ CREATE TABLE `ClassSchedule` (
     `start_time` TIME NOT NULL,
     `end_time` TIME NOT NULL,
 
-    
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -137,21 +138,54 @@ CREATE TABLE `TimeThreshold` (
     `class_id` INTEGER NOT NULL,
     `method` INTEGER NOT NULL,
     `time` TIME NOT NULL,
+    `custom_time` VARCHAR(100) NULL,
 
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
 CREATE TABLE `WaSession` (
-    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `number` VARCHAR(191) NOT NULL,
     `name` VARCHAR(100) NOT NULL,
     `status` VARCHAR(100) NOT NULL,
+    `greet_template` LONGTEXT NOT NULL,
+
+    UNIQUE INDEX `WaSession_name_key`(`name`),
+    PRIMARY KEY (`number`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `Holidays` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `name` VARCHAR(100) NOT NULL,
+    `date` DATETIME(3) NOT NULL,
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `EnrollmentExtra` (
+    `student_rfid` VARCHAR(100) NOT NULL,
+    `ekstrakurikuler` INTEGER NOT NULL,
+
+    UNIQUE INDEX `EnrollmentExtra_student_rfid_ekstrakurikuler_key`(`student_rfid`, `ekstrakurikuler`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `Log` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `user` VARCHAR(255) NOT NULL,
+    `activity` LONGTEXT NOT NULL,
+    `date_time` INTEGER NOT NULL,
 
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- AddForeignKey
 ALTER TABLE `Student` ADD CONSTRAINT `Student_parent_nid_fkey` FOREIGN KEY (`parent_nid`) REFERENCES `Parent`(`nid`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `Student` ADD CONSTRAINT `Student_class_id_fkey` FOREIGN KEY (`class_id`) REFERENCES `Class`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `Teacher` ADD CONSTRAINT `Teacher_class_id_fkey` FOREIGN KEY (`class_id`) REFERENCES `Class`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
@@ -191,3 +225,9 @@ ALTER TABLE `SubjectAttendance` ADD CONSTRAINT `SubjectAttendance_subject_id_fke
 
 -- AddForeignKey
 ALTER TABLE `TimeThreshold` ADD CONSTRAINT `TimeThreshold_class_id_fkey` FOREIGN KEY (`class_id`) REFERENCES `Class`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `EnrollmentExtra` ADD CONSTRAINT `EnrollmentExtra_student_rfid_fkey` FOREIGN KEY (`student_rfid`) REFERENCES `Student`(`rfid`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `EnrollmentExtra` ADD CONSTRAINT `EnrollmentExtra_ekstrakurikuler_fkey` FOREIGN KEY (`ekstrakurikuler`) REFERENCES `Subject`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;

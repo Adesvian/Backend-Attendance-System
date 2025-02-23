@@ -301,15 +301,17 @@ exports.createAttendance = async (req, res, next) => {
         const duration = Date.now() - startTime;
         const logMessage = `subject attendance recorded with ID ${result.id}|${result.student_rfid}|${localDate}|${result.subject_name}|${duration} ms\n`;
 
-        const filePath = path.join(logDirectory, "subject_attendance_logs.txt");
-        fs.appendFileSync(filePath, logMessage);
+        // Uncomment the following line to debug time response
+        // const filePath = path.join(logDirectory, "subject_attendance_logs.txt");
+        // fs.appendFileSync(filePath, logMessage);
       }
       const localDate = new Date(result.date * 1000).toLocaleString();
       const duration = Date.now() - startTime;
       const logMessage = `Check-in recorded with ID ${result.id}|${result.student_rfid}|${localDate}|${duration} ms\n`;
 
-      const filePath = path.join(logDirectory, "attendance_logs.txt");
-      fs.appendFileSync(filePath, logMessage);
+      // Uncomment the following line to debug time response
+      // const filePath = path.join(logDirectory, "attendance_logs.txt");
+      // fs.appendFileSync(filePath, logMessage);
       if (wa.length > 0 && student.parent.phone_num != null) {
         const phone = toJid(student.parent.phone_num);
         req.body.phone = phone;
@@ -352,8 +354,9 @@ exports.createAttendance = async (req, res, next) => {
         const duration = Date.now() - startTime;
         const logMessage = `Check-out recorded with ID ${result.id}|${result.student_rfid}|${localDate}|${duration} ms\n`;
 
-        const filePath = path.join(logDirectory, "attendance_logs.txt");
-        fs.appendFileSync(filePath, logMessage);
+        // Uncomment the following line to debug time response
+        // const filePath = path.join(logDirectory, "attendance_logs.txt");
+        // fs.appendFileSync(filePath, logMessage);
         if (wa.length > 0 && student.parent.phone_num != null) {
           const phone = toJid(student.parent.phone_num);
           req.body.phone = phone;
@@ -395,11 +398,12 @@ exports.createAttendance = async (req, res, next) => {
           const duration = Date.now() - startTime;
           const logMessage = `subject attendance recorded with ID ${result.id}|${result.student_rfid}|${localDate}|${result.subject_name}|${duration} ms\n`;
 
-          const filePath = path.join(
-            logDirectory,
-            "subject_attendance_logs.txt"
-          );
-          fs.appendFileSync(filePath, logMessage);
+          // Uncomment the following line to debug time response
+          // const filePath = path.join(
+          //   logDirectory,
+          //   "subject_attendance_logs.txt"
+          // );
+          // fs.appendFileSync(filePath, logMessage);
           return {
             status: 200,
             message: logMessage.trim(),
